@@ -5,17 +5,17 @@
 //  Created by Elyan Gutierrez on 3/24/26.
 //
 
+import AppKit
 import SwiftUI
 
 @main
 struct KeypathApp: App {
+    
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var body: some Scene {
-        WindowGroup {
-            PathsView()
-                .frame(width: 650, height: 425)
+        Settings {
+            EmptyView()
         }
-        .defaultPosition(.center)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
     }
 }
