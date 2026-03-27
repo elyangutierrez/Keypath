@@ -26,10 +26,9 @@ struct PathsView: View {
             
             VStack(spacing: 0.0) {
                 VStack {
-                    // top section with scrollview and grid
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 15.0) {
-                            ForEach(0..<6, id: \.self) { i in
+                            ForEach(0..<4, id: \.self) { i in
                                 VStack {
                                     RoundedRectangle(cornerRadius: 15.0)
                                         .fill(.clear)
@@ -41,6 +40,7 @@ struct PathsView: View {
                         }
                     }
                     .scrollIndicators(.never)
+                    .scrollTargetBehavior(.paging)
                     
                 }
                 .frame(maxWidth: .infinity, minHeight: 370, maxHeight: 370)
@@ -48,13 +48,18 @@ struct PathsView: View {
                 VStack {
                     HStack {
                         VStack {
-                            Image(systemName: "gear")
-                                .frame(width: 25, height: 25)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 5.0)
-                                        .fill(.quaternary)
-                                        .frame(width: 23, height: 23)
-                                )
+                            Button(action:{
+                                // TODO: implement settings...
+                            }) {
+                                Image(systemName: "gear")
+                                    .frame(width: 25, height: 25)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 5.0)
+                                            .fill(.quaternary)
+                                            .frame(width: 23, height: 23)
+                                    )
+                            }
+                            .buttonStyle(.plain)
                         }
                         
                         Spacer()
@@ -63,7 +68,7 @@ struct PathsView: View {
                             Text("Commands")
                             
                             HStack(spacing: 5.0) {
-                                Image(systemName: "command")
+                                Image(systemName: "control")
                                     .fontWeight(.medium)
                                     .frame(width: 25, height: 25)
                                     .background(
@@ -72,7 +77,7 @@ struct PathsView: View {
                                             .frame(width: 23, height: 23)
                                     )
                                 
-                                Image(systemName: "command")
+                                Image(systemName: "option")
                                     .fontWeight(.medium)
                                     .frame(width: 25, height: 25)
                                     .background(
@@ -81,7 +86,7 @@ struct PathsView: View {
                                             .frame(width: 23, height: 23)
                                     )
                                 
-                                Image(systemName: "command")
+                                Text("C")
                                     .fontWeight(.medium)
                                     .frame(width: 25, height: 25)
                                     .background(
