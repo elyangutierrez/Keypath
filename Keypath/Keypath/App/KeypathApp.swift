@@ -11,7 +11,11 @@ import SwiftUI
 struct KeypathApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            PathsView()
+                .frame(width: 650, height: 425)
         }
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
     }
 }
