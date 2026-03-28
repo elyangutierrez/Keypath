@@ -22,7 +22,7 @@ class PathsWindowManager {
         
         // Initialize the NSPanel
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 650, height: 425), // Size of your view
+            contentRect: NSRect(x: 0, y: 0, width: 650, height: 465), // Size of your view
             styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
             backing: .buffered,
             defer: false

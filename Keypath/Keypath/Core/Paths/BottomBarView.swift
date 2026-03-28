@@ -61,6 +61,11 @@ struct BottomBarView: View {
             }
         }
         .padding(.horizontal)
+        .frame(height: 55)
+        .background(
+            Rectangle()
+                .fill(.regularMaterial)
+        )
     }
 }
 
