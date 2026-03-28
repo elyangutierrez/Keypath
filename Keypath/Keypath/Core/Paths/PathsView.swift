@@ -34,15 +34,21 @@ struct PathsView: View {
             
             VStack(spacing: 0.0) {
                 VStack {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 15.0) {
-                            ForEach(sortedApps, id: \.self) { application in
-                                PathView(application: application)
+                    if !sortedApps.isEmpty {
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 15.0) {
+                                ForEach(sortedApps, id: \.self) { application in
+                                    PathView(application: application)
+                                        
+                                }
                             }
                         }
+                        .scrollIndicators(.never)
+                        .contentMargins(.bottom, 30, for: .scrollContent)
+                        .padding(.horizontal)
+                    } else {
+                        UnavaliableAppsView()
                     }
-                    .scrollIndicators(.never)
-                    .contentMargins(.bottom, 30, for: .scrollContent)
                 }
                 .frame(maxWidth: .infinity, minHeight: 410, maxHeight: 410)
                 
