@@ -11,6 +11,8 @@ struct PathsView: View {
     
     @Environment(\.colorScheme) var colorScheme
     
+    @State private var applicationManager = ApplicationManager()
+    
     let columns: [GridItem] = [
         GridItem(.fixed(300)),
         GridItem(.fixed(300))
@@ -18,6 +20,12 @@ struct PathsView: View {
     
     var backgroundColor: Color {
         colorScheme == .dark ? .black : .white
+    }
+    
+    var sortedApps: [NSRunningApplication] {
+        let apps = applicationManager.getRunningApplications().sorted(by: { $0.localizedName ?? "" < $1.localizedName ?? "" })
+        
+        return apps
     }
     
     var body: some View {
@@ -28,32 +36,26 @@ struct PathsView: View {
                 VStack {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 15.0) {
-                            ForEach(0..<4, id: \.self) { i in
-                                PathView()
+                            ForEach(sortedApps, id: \.self) { application in
+                                PathView(application: application)
                             }
                         }
                     }
                     .scrollIndicators(.never)
-                    .scrollTargetBehavior(.paging)
-                    
+                    .contentMargins(.bottom, 30, for: .scrollContent)
                 }
-                .frame(maxWidth: .infinity, minHeight: 370, maxHeight: 370)
+                .frame(maxWidth: .infinity, minHeight: 410, maxHeight: 410)
                 
                 VStack {
                     BottomBarView()
                 }
                 .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
-                .background(
-                    Rectangle()
-                        .fill(.regularMaterial)
-                )
             }
         }
-        .background(WindowConfiguration())
     }
 }
 
 #Preview {
     PathsView()
-        .frame(width: 650, height: 425)
+        .frame(width: 650, height: 465)
 }
