@@ -14,17 +14,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let commandListener = CommandListener()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("App is running invisibly in the background!")
-        
-       
-        guard checkAccessibilityPermissions() else {
-            print("Accessibility permissions not granted. Waiting for user to enable them.")
-            return
-        }
-        
-        PathsWindowManager.shared.setupPanel(with: PathsView())
-        
-        commandListener.start()
+        #if DEBUG
+            print("App is running invisibly in the background!")
+            
+            
+            guard checkAccessibilityPermissions() else {
+                print("Accessibility permissions not granted. Waiting for user to enable them.")
+                return
+            }
+            
+            PathsWindowManager.shared.setupPanel(with: PathsView())
+            
+            commandListener.start()
+        #endif
     }
     
     private func checkAccessibilityPermissions() -> Bool {
