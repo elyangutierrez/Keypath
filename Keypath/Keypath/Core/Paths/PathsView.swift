@@ -13,6 +13,8 @@ struct PathsView: View {
     
     @State private var applicationManager = ApplicationManager()
     
+    @State private var appState = AppState.shared
+    
     let columns: [GridItem] = [
         GridItem(.fixed(300)),
         GridItem(.fixed(300))
@@ -46,6 +48,23 @@ struct PathsView: View {
                         .scrollIndicators(.never)
                         .contentMargins(.bottom, 30, for: .scrollContent)
                         .padding(.horizontal)
+                        .overlay {
+                            if appState.isShowingCommands {
+                                VStack {
+                                    VStack {
+                                        CommandsView()
+                                    }
+                                    .frame(width: 300, height: 250)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 15.0)
+                                            .fill(.clear)
+                                            .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
+                                    )
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                                .padding()
+                            }
+                        }
                     } else {
                         UnavaliableAppsView()
                     }
