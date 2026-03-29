@@ -71,7 +71,7 @@ final class CommandListener {
             if hasControl && hasOption && keyCode == keymaps.reversed["k"] {
                 
                 if isListeningForPath {
-                    AppState.shared.isShowingCommands = false
+                    KeypathCommandManager.shared.isShowingCommands = false
                     isListeningForPath = false
                     DispatchQueue.main.async { PathsWindowManager.shared.hide() }
                 } else {
@@ -84,7 +84,15 @@ final class CommandListener {
             
             if hasControl && hasOption && keyCode == keymaps.reversed["c"] && isListeningForPath {
                 DispatchQueue.main.async {
-                    AppState.shared.isShowingCommands.toggle()
+                    KeypathCommandManager.shared.isShowingCommands.toggle()
+                }
+                
+                return nil
+            }
+            
+            if hasControl && hasOption && keyCode == keymaps.reversed["s"] {
+                DispatchQueue.main.async {
+                    KeypathCommandManager.shared.isShowingCommands.toggle()
                 }
                 
                 return nil
@@ -93,7 +101,7 @@ final class CommandListener {
             if isListeningForPath {
                 
                 if keyCode == keymaps.reversed["esc"] {
-                    AppState.shared.isShowingCommands = false
+                    KeypathCommandManager.shared.isShowingCommands = false
                     isListeningForPath = false
                     DispatchQueue.main.async { PathsWindowManager.shared.hide() }
                     return nil
