@@ -150,21 +150,39 @@ final class CommandListener {
                 
                 if !newKeyString.isEmpty {
                     DispatchQueue.main.async {
-                        // TODO: Update your actual Keypath model's property here!
+                        let activeIndex = self.commandManager.currentIndex
                         
-                        let newKeybind = Keybind(
-                            key1: .symbol("control"), key2: .symbol("option"), key3: .letter(newKeyString)
+                       
+                        if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
+                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
+                                return existingChar == newKeyString
+                            }
+                            return false
+                        }) {
+                            if duplicateIndex != activeIndex {
+                                self.commandManager.currentPaths[duplicateIndex].keybind = nil
+                                
+                                let oldAppName = self.commandManager.currentPaths[duplicateIndex].application.localizedName ?? "App"
+                                print("Stole keybind '\(newKeyString)' from \(oldAppName)")
+                            }
+                        }
+                        
+                        // construct and assign the new Keybind
+                        let newBind = Keybind(
+                            key1: .symbol("control"),
+                            key2: .symbol("option"),
+                            key3: .letter(newKeyString)
                         )
                         
-                        self.commandManager.currentPaths[self.commandManager.currentIndex].keybind = newKeybind
+                        self.commandManager.currentPaths[activeIndex].keybind = newBind
                         
-                        print("Successfully changed keybind for \(self.commandManager.currentPaths[self.commandManager.currentIndex].application.localizedName ?? "App") to: [ \(newKeyString) ]")
+                        let targetAppName = self.commandManager.currentPaths[activeIndex].application.localizedName ?? "App"
+                        print("Successfully mapped '\(newKeyString)' to \(targetAppName)")
                         
                         self.commandManager.isInKeybindUpdateMode = false
                     }
                 }
                 
-                // Swallow whatever key they pressed so it doesn't type into another app
                 return nil
             }
             
