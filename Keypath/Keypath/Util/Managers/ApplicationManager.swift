@@ -12,7 +12,7 @@ import Foundation
 final class ApplicationManager {
     let workspace = NSWorkspace.shared
     
-    func getRunningApplications() -> [NSRunningApplication] {
+    func getRunningApplications() -> [Keypath] {
         let runningApplications = workspace.runningApplications
         
         let regularPolicyApplications = runningApplications.filter { $0.activationPolicy == .regular }
@@ -21,6 +21,14 @@ final class ApplicationManager {
         
         let resultingApplications = regularPolicyApplications.filter { !excludedApplications.contains($0.localizedName ?? "") }
         
-        return resultingApplications
+        var holder: [Keypath] = []
+        
+        for application in resultingApplications {
+            holder.append(
+                Keypath(application: application)
+            )
+        }
+        
+        return holder
     }
 }

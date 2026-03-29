@@ -10,10 +10,9 @@ import SwiftUI
 struct PathsView: View {
     
     @Environment(\.colorScheme) var colorScheme
-    
     @State private var applicationManager = ApplicationManager()
-    
     @State private var commandManager = KeypathCommandManager.shared
+    @State private var paths: [Keypath] = []
     
     let columns: [GridItem] = [
         GridItem(.fixed(300)),
@@ -24,29 +23,35 @@ struct PathsView: View {
         colorScheme == .dark ? .black : .white
     }
     
-    var sortedApps: [NSRunningApplication] {
-        let apps = applicationManager.getRunningApplications().sorted(by: { $0.localizedName ?? "" < $1.localizedName ?? "" })
-        
-        return apps
-    }
-    
     var body: some View {
         ZStack {
             GlassBackground()
             
             VStack(spacing: 0.0) {
                 VStack {
-                    if !sortedApps.isEmpty {
-                        ScrollView {
-                            LazyVGrid(columns: columns, spacing: 15.0) {
-                                ForEach(sortedApps, id: \.self) { application in
-                                    PathView(application: application)
+                    if !paths.isEmpty {
+                        
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                LazyVGrid(columns: columns, spacing: 15.0) {
+                                    ForEach(Array(paths.enumerated()), id: \.element) { index, path in
+                                        PathView(
+                                            path: path,
+                                            isSelected: commandManager.currentIndex == index && commandManager.isInSelectionMode
+                                        )
+                                        .id(index)
+                                    }
+                                }
+                            }
+                            .scrollIndicators(.never)
+                            .contentMargins(.bottom, 30, for: .scrollContent)
+                            .padding(.horizontal)
+                            .onChange(of: commandManager.currentIndex) { _, newIndex in
+                                withAnimation(.spring(response: 0.3)) {
+                                    proxy.scrollTo(newIndex, anchor: .center)
                                 }
                             }
                         }
-                        .scrollIndicators(.never)
-                        .contentMargins(.bottom, 30, for: .scrollContent)
-                        .padding(.horizontal)
                         .overlay {
                             if commandManager.isShowingCommands {
                                 VStack {
@@ -75,6 +80,14 @@ struct PathsView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
             }
+        }
+        .onAppear {
+            paths = applicationManager.getRunningApplications().sorted()
+            commandManager.currentNumberOfApps = paths.count
+            commandManager.resetIndex()
+        }
+        .onChange(of: paths.count) { _, newCount in
+            commandManager.currentNumberOfApps = newCount
         }
     }
 }
