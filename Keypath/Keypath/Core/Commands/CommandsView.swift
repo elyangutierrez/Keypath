@@ -88,7 +88,6 @@ struct CommandsView: View {
                     }
                 }
                 .scrollIndicators(.never)
-                .scrollClipDisabled()
             }
         }
         .safeAreaPadding()

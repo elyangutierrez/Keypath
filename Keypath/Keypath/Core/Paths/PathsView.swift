@@ -85,9 +85,11 @@ struct PathsView: View {
             paths = applicationManager.getRunningApplications().sorted()
             commandManager.currentNumberOfApps = paths.count
             commandManager.resetIndex()
+            commandManager.setPaths(paths)
         }
         .onChange(of: paths.count) { _, newCount in
             commandManager.currentNumberOfApps = newCount
+            commandManager.setPaths(paths)
         }
     }
 }

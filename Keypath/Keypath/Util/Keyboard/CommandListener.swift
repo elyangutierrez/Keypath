@@ -124,6 +124,50 @@ final class CommandListener {
                 return nil
             }
             
+            if hasControl && hasOption && keyCode == keymaps.reversed["u"] {
+                DispatchQueue.main.async {
+                    self.commandManager.isInKeybindUpdateMode.toggle()
+                    print("Listening for new keybind...")
+                }
+                return nil
+            }
+            
+            if commandManager.isInKeybindUpdateMode {
+                
+                if keyCode == keymaps.reversed["esc"] {
+                    DispatchQueue.main.async {
+                        self.commandManager.isInKeybindUpdateMode = false
+                        print("Cancelled keybind update.")
+                    }
+                    return nil
+                }
+                
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length, unicodeString: &chars)
+                
+                let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
+                
+                if !newKeyString.isEmpty {
+                    DispatchQueue.main.async {
+                        // TODO: Update your actual Keypath model's property here!
+                        
+                        let newKeybind = Keybind(
+                            key1: .symbol("control"), key2: .symbol("option"), key3: .letter(newKeyString)
+                        )
+                        
+                        self.commandManager.currentPaths[self.commandManager.currentIndex].keybind = newKeybind
+                        
+                        print("Successfully changed keybind for \(self.commandManager.currentPaths[self.commandManager.currentIndex].application.localizedName ?? "App") to: [ \(newKeyString) ]")
+                        
+                        self.commandManager.isInKeybindUpdateMode = false
+                    }
+                }
+                
+                // Swallow whatever key they pressed so it doesn't type into another app
+                return nil
+            }
+            
             if isListeningForPath {
                 
                 if keyCode == keymaps.reversed["esc"] {

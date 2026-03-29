@@ -13,11 +13,17 @@ final class KeypathCommandManager {
     
     var isShowingCommands: Bool = false
     var isInSelectionMode: Bool = false
+    var isInKeybindUpdateMode: Bool = false
     
     var currentIndex: Int = 0
     var currentNumberOfApps: Int = 0
+    var currentPaths: [Keypath] = []
     
     private init() {}
+    
+    func setPaths(_ paths: [Keypath]) {
+        currentPaths = paths
+    }
     
     func shiftSelectionToLeft() {
         guard currentIndex > 0 else {
