@@ -24,7 +24,7 @@ struct Commands {
         KeypathCommand(icon: "arrow.left", name: "Shift Selection To The Left", keybind: Keybind(
             key1: .symbol("control"), key2: .symbol("option"), key3: .symbol("chevron.forward")
         )),
-        KeypathCommand(icon: "arrow.left", name: "Change Path Keybind", keybind: Keybind(
+        KeypathCommand(icon: "command", name: "Assign Path Keybind", keybind: Keybind(
             key1: .symbol("control"), key2: .symbol("option"), key3: .letter("U")
         ))
     ]

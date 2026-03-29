@@ -54,6 +54,10 @@ struct PathView: View {
                                         .fontWeight(.medium)
                                         .frame(width: 25, height: 25)
                                 }
+                            } else {
+                                Image(systemName: "nosign")
+                                    .fontWeight(.medium)
+                                    .frame(width: 25, height: 25)
                             }
                         }
                     }
