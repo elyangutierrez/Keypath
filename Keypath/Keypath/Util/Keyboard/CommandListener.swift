@@ -124,6 +124,68 @@ final class CommandListener {
                 return nil
             }
             
+            if hasControl && hasOption && keyCode == keymaps.reversed["u"] {
+                DispatchQueue.main.async {
+                    self.commandManager.isInKeybindUpdateMode.toggle()
+                    print("Listening for new keybind...")
+                }
+                return nil
+            }
+            
+            if commandManager.isInKeybindUpdateMode {
+                
+                if keyCode == keymaps.reversed["esc"] {
+                    DispatchQueue.main.async {
+                        self.commandManager.isInKeybindUpdateMode = false
+                        print("Cancelled keybind update.")
+                    }
+                    return nil
+                }
+                
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length, unicodeString: &chars)
+                
+                let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
+                
+                if !newKeyString.isEmpty {
+                    DispatchQueue.main.async {
+                        let activeIndex = self.commandManager.currentIndex
+                        
+                       
+                        if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
+                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
+                                return existingChar == newKeyString
+                            }
+                            return false
+                        }) {
+                            if duplicateIndex != activeIndex {
+                                self.commandManager.currentPaths[duplicateIndex].keybind = nil
+                                
+                                let oldAppName = self.commandManager.currentPaths[duplicateIndex].application.localizedName ?? "App"
+                                print("Stole keybind '\(newKeyString)' from \(oldAppName)")
+                            }
+                        }
+                        
+                        // construct and assign the new Keybind
+                        let newBind = Keybind(
+                            key1: .symbol("control"),
+                            key2: .symbol("option"),
+                            key3: .letter(newKeyString)
+                        )
+                        
+                        self.commandManager.currentPaths[activeIndex].keybind = newBind
+                        
+                        let targetAppName = self.commandManager.currentPaths[activeIndex].application.localizedName ?? "App"
+                        print("Successfully mapped '\(newKeyString)' to \(targetAppName)")
+                        
+                        self.commandManager.isInKeybindUpdateMode = false
+                    }
+                }
+                
+                return nil
+            }
+            
             if isListeningForPath {
                 
                 if keyCode == keymaps.reversed["esc"] {

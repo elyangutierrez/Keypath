@@ -16,7 +16,8 @@ struct Keymaps {
         0: "a", 1: "s", 2: "d", 3: "f", 5: "g", 4: "h",
         38: "j", 40: "k", 37: "l",
         6: "z", 7: "x", 8: "c", 9: "v", 11: "b", 45: "n", 46: "m",
-        53: "esc", 123: "leftarrow", 124: "rightarrow", 125: "downarrow", 126: "uparrow"
+        53: "esc", 123: "leftarrow", 124: "rightarrow", 125: "downarrow", 126: "uparrow",
+        76: "enter", 36: "return"
     ]
 
     lazy var reversed: [String: Int] = {

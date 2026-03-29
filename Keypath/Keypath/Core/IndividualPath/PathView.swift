@@ -10,11 +10,16 @@ import SwiftUI
 struct PathView: View {
     
     @State private var screenshotManager = ScreenshotManager()
+    @State private var commandManager = KeypathCommandManager.shared
     
     @State private var screenshotImage: CGImage?
     
-    var path: Keypath
+    @Bindable var path: Keypath
     var isSelected: Bool
+    
+    var isChangingKeybind: Bool {
+        commandManager.isInKeybindUpdateMode && isSelected
+    }
     
     var body: some View {
         VStack {
@@ -28,17 +33,32 @@ struct PathView: View {
                     
                     VStack {
                         HStack(spacing: -10.0) {
-                            Image(systemName: "control")
-                                .fontWeight(.medium)
-                                .frame(width: 25, height: 25)
-                            
-                            Image(systemName: "option")
-                                .fontWeight(.medium)
-                                .frame(width: 25, height: 25)
-                            
-                            Text("C")
-                                .fontWeight(.medium)
-                                .frame(width: 25, height: 25)
+                            if let keybind = path.keybind {
+                                if case let .symbol(sym) = keybind.key1 {
+                                    Image(systemName: sym)
+                                        .fontWeight(.medium)
+                                        .frame(width: 25, height: 25)
+                                }
+                                
+                                if case let .symbol(sym) = keybind.key2 {
+                                    Image(systemName: sym)
+                                        .fontWeight(.medium)
+                                        .frame(width: 25, height: 25)
+                                }
+                                
+                                if case let .letter(letter) = keybind.key3 {
+                                    Text(letter)
+                                        .frame(width: 25, height: 25)
+                                } else if case let .symbol(sym) = keybind.key3 {
+                                    Image(systemName: sym)
+                                        .fontWeight(.medium)
+                                        .frame(width: 25, height: 25)
+                                }
+                            } else {
+                                Image(systemName: "nosign")
+                                    .fontWeight(.medium)
+                                    .frame(width: 25, height: 25)
+                            }
                         }
                     }
                     .background(
@@ -82,9 +102,28 @@ struct PathView: View {
         .frame(height: 190)
         .background(
             RoundedRectangle(cornerRadius: 15.0)
-                .fill(isSelected ? .blue.opacity(0.6) : .clear)
+                .fill(isSelected && !isChangingKeybind ? .blue.opacity(0.6) : .clear)
                 .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
         )
+        .overlay {
+            if isChangingKeybind {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 15.0)
+                        .fill(.ultraThickMaterial)
+                        .opacity(0.9)
+                    
+                    VStack(spacing: 15.0) {
+                        Image(systemName: "keyboard")
+                            .resizable()
+                            .frame(width: 35, height: 25)
+                        
+                        Text("Enter your new keybind")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                    }
+                }
+            }
+        }
         .task {
             if screenshotImage == nil {
                 screenshotImage = await screenshotManager.getApplicationImage(app: path.application)
