@@ -47,18 +47,13 @@ struct PathView: View {
                                 }
                                 
                                 if case let .letter(letter) = keybind.key3 {
-                                    Image(systemName: letter)
-                                        .fontWeight(.medium)
+                                    Text(letter)
                                         .frame(width: 25, height: 25)
                                 } else if case let .symbol(sym) = keybind.key3 {
                                     Image(systemName: sym)
                                         .fontWeight(.medium)
                                         .frame(width: 25, height: 25)
                                 }
-                            } else {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .fontWeight(.medium)
-                                    .frame(width: 25, height: 25)
                             }
                         }
                     }
