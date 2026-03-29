@@ -27,6 +27,8 @@ final class CommandListener {
     private var eventTap: CFMachPort?
     
     var keymaps = Keymaps()
+    
+    var commandManager = KeypathCommandManager.shared
 
     func start() {
         // We want to listen for modifier key changes (Ctrl/Option) and normal key downs
@@ -71,7 +73,7 @@ final class CommandListener {
             if hasControl && hasOption && keyCode == keymaps.reversed["k"] {
                 
                 if isListeningForPath {
-                    AppState.shared.isShowingCommands = false
+                    commandManager.isShowingCommands = false
                     isListeningForPath = false
                     DispatchQueue.main.async { PathsWindowManager.shared.hide() }
                 } else {
@@ -84,16 +86,49 @@ final class CommandListener {
             
             if hasControl && hasOption && keyCode == keymaps.reversed["c"] && isListeningForPath {
                 DispatchQueue.main.async {
-                    AppState.shared.isShowingCommands.toggle()
+                    self.commandManager.isShowingCommands.toggle()
                 }
                 
+                return nil
+            }
+            
+            if hasControl && hasOption && keyCode == keymaps.reversed["s"] {
+                DispatchQueue.main.async {
+                    self.commandManager.isInSelectionMode.toggle()
+                    
+                    if !self.commandManager.isInSelectionMode {
+                        self.commandManager.resetIndex()
+                    }
+                }
+                
+                return nil
+            }
+            
+            if hasControl && hasOption && commandManager.isInSelectionMode &&
+                keyCode == keymaps.reversed["leftarrow"]
+            {
+                // shift selection by one to left via index
+                DispatchQueue.main.async {
+                    self.commandManager.shiftSelectionToLeft()
+                }
+                return nil
+            }
+            
+            if hasControl && hasOption && commandManager.isInSelectionMode &&
+                keyCode == keymaps.reversed["rightarrow"]
+            {
+                // shift selection by one to right via index
+                DispatchQueue.main.async {
+                    self.commandManager.shiftSelectionToRight()
+                }
                 return nil
             }
             
             if isListeningForPath {
                 
                 if keyCode == keymaps.reversed["esc"] {
-                    AppState.shared.isShowingCommands = false
+                    commandManager.isShowingCommands = false
+                    commandManager.resetIndex()
                     isListeningForPath = false
                     DispatchQueue.main.async { PathsWindowManager.shared.hide() }
                     return nil

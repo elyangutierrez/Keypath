@@ -8,6 +8,7 @@
 import AppKit
 import Foundation
 import ApplicationServices // Required for AX functions
+import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     

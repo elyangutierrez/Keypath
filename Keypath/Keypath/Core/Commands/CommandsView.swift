@@ -24,7 +24,7 @@ struct CommandsView: View {
                         }
                         
                         VStack(spacing: 5.0) {
-                            ForEach(commands.sorted(), id: \.id) { cmd in
+                            ForEach(commands, id: \.id) { cmd in
                                 VStack {
                                     HStack {
                                         HStack {
@@ -61,6 +61,13 @@ struct CommandsView: View {
                                                         RoundedRectangle(cornerRadius: 5.0)
                                                             .fill(.gray.opacity(0.4))
                                                     )
+                                            } else if case let .symbol(sym) = cmd.keybind.key3 {
+                                                Image(systemName: sym)
+                                                    .frame(width: 20, height: 20)
+                                                    .background(
+                                                        RoundedRectangle(cornerRadius: 5.0)
+                                                            .fill(.gray.opacity(0.4))
+                                                    )
                                             }
                                         }
                                     }
@@ -90,5 +97,5 @@ struct CommandsView: View {
 
 #Preview {
     CommandsView()
-        .frame(width: 300, height: 250)
+        .frame(width: 315, height: 250)
 }

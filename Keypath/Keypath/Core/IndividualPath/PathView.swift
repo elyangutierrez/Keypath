@@ -13,15 +13,16 @@ struct PathView: View {
     
     @State private var screenshotImage: CGImage?
     
-    var application: NSRunningApplication
+    var path: Keypath
+    var isSelected: Bool
     
     var body: some View {
         VStack {
             VStack {
                 HStack {
-                    Image(nsImage: application.icon ?? NSImage())
+                    Image(nsImage: path.application.icon ?? NSImage())
                     
-                    Text(application.localizedName ?? "Unknown")
+                    Text(path.application.localizedName ?? "Unknown")
                     
                     Spacer()
                     
@@ -55,16 +56,16 @@ struct PathView: View {
                     Image(decorative: image, scale: 1, orientation: .up)
                         .resizable()
                         .clipShape(.rect(cornerRadius: 15.0))
-                        .opacity(application.isActive ? 1.0 : 0.5)
+                        .opacity(path.application.isActive ? 1.0 : 0.5)
                         .overlay {
-                            if !application.isActive {
+                            if !path.application.isActive {
                                 Image(systemName: "eye.slash")
                                     .resizable()
                                     .frame(width: 35, height: 30)
                             }
                         }
                 } else {
-                    Image(nsImage: application.icon ?? NSImage())
+                    Image(nsImage: path.application.icon ?? NSImage())
                         .resizable()
                         .frame(width: 80, height: 80)
                 }
@@ -81,15 +82,17 @@ struct PathView: View {
         .frame(height: 190)
         .background(
             RoundedRectangle(cornerRadius: 15.0)
-                .fill(.clear)
+                .fill(isSelected ? .blue.opacity(0.6) : .clear)
                 .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
         )
         .task {
-            screenshotImage = await screenshotManager.getApplicationImage(app: application)
+            if screenshotImage == nil {
+                screenshotImage = await screenshotManager.getApplicationImage(app: path.application)
+            }
         }
     }
 }
 
 #Preview {
-    PathView(application: NSRunningApplication())
+    PathView(path: Keypath(application: NSRunningApplication()), isSelected: false)
 }
