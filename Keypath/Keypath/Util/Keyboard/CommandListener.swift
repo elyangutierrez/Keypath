@@ -143,15 +143,21 @@ final class CommandListener {
                     return nil
                 }
                 
-                var length = 0
-                var chars = [UniChar](repeating: 0, count: 4)
-                event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length, unicodeString: &chars)
+//                var length = 0
+//                var chars = [UniChar](repeating: 0, count: 4)
+//                event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length, unicodeString: &chars)
+//                
+//                let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
                 
-                let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
+                let newKeyString = self.keymaps.validKeybindMappings[keyCode]?.uppercased()
                 
-                if !newKeyString.isEmpty {
+                guard let keyString = newKeyString else {
+                    return nil
+                }
+                
+                if !keyString.isEmpty {
                     
-                    print("Key string: \(newKeyString)")
+                    print("Key string: \(keyString)")
                    
                     DispatchQueue.main.async {
                         let activeIndex = self.commandManager.currentIndex
@@ -160,7 +166,7 @@ final class CommandListener {
                         
                         if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
                             if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
-                                return existingChar == newKeyString
+                                return existingChar == keyString
                             }
                             return false
                         }) {
@@ -178,7 +184,7 @@ final class CommandListener {
                         let newBind = Keybind(
                             key1: .symbol("control"),
                             key2: .symbol("option"),
-                            key3: .letter(newKeyString)
+                            key3: .letter(keyString)
                         )
                         
                         self.commandManager.currentPaths[activeIndex].keybind = newBind
@@ -192,7 +198,7 @@ final class CommandListener {
                         }
                         
                         try? context.save()
-                        print("Saved '\(newKeyString)' to SwiftData for \(targetAppName)")
+                        print("Saved '\(keyString)' to SwiftData for \(targetAppName)")
                         
                         self.commandManager.isInKeybindUpdateMode = false
                     }
