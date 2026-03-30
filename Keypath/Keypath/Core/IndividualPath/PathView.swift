@@ -77,10 +77,8 @@ struct PathView: View {
                         Image(decorative: image, scale: 1, orientation: .up)
                             .resizable()
                             .clipShape(.rect(cornerRadius: 15.0))
-                        // CHANGE 1: Dim the app only if it is explicitly hidden (Cmd + H)
                             .opacity(path.application.isHidden ? 0.5 : 1.0)
                             .overlay {
-                                // CHANGE 2: Show the eye slash only if hidden
                                 if path.application.isHidden {
                                     Image(systemName: "eye.slash")
                                         .resizable()
@@ -106,8 +104,8 @@ struct PathView: View {
         .frame(height: 190)
         .background(
             RoundedRectangle(cornerRadius: 15.0)
-                .fill(isSelected && !isChangingKeybind ? .blue.opacity(0.6) : .clear)
-                .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
+                .fill(.clear)
+                .glassEffect(.regular.tint(isSelected && !isChangingKeybind ? .blue.opacity(0.6) : .clear), in: .rect(cornerRadius: 15.0))
         )
         .overlay {
             if isChangingKeybind {

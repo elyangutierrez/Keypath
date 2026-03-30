@@ -143,12 +143,6 @@ final class CommandListener {
                     return nil
                 }
                 
-//                var length = 0
-//                var chars = [UniChar](repeating: 0, count: 4)
-//                event.keyboardGetUnicodeString(maxStringLength: 4, actualStringLength: &length, unicodeString: &chars)
-//                
-//                let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
-                
                 let newKeyString = self.keymaps.validKeybindMappings[keyCode]?.uppercased()
                 
                 guard let keyString = newKeyString else {
