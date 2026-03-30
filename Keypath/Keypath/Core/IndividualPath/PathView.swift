@@ -72,30 +72,34 @@ struct PathView: View {
             Spacer()
             
             VStack {
-                if let image = screenshotImage {
-                    Image(decorative: image, scale: 1, orientation: .up)
-                        .resizable()
-                        .clipShape(.rect(cornerRadius: 15.0))
-                        .opacity(path.application.isActive ? 1.0 : 0.5)
-                        .overlay {
-                            if !path.application.isActive {
-                                Image(systemName: "eye.slash")
-                                    .resizable()
-                                    .frame(width: 35, height: 30)
+                VStack {
+                    if let image = screenshotImage {
+                        Image(decorative: image, scale: 1, orientation: .up)
+                            .resizable()
+                            .clipShape(.rect(cornerRadius: 15.0))
+                        // CHANGE 1: Dim the app only if it is explicitly hidden (Cmd + H)
+                            .opacity(path.application.isHidden ? 0.5 : 1.0)
+                            .overlay {
+                                // CHANGE 2: Show the eye slash only if hidden
+                                if path.application.isHidden {
+                                    Image(systemName: "eye.slash")
+                                        .resizable()
+                                        .frame(width: 35, height: 30)
+                                }
                             }
-                        }
-                } else {
-                    Image(nsImage: path.application.icon ?? NSImage())
-                        .resizable()
-                        .frame(width: 80, height: 80)
+                    } else {
+                        Image(nsImage: path.application.icon ?? NSImage())
+                            .resizable()
+                            .frame(width: 80, height: 80)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 15.0)
+                        .fill(.clear)
+                        .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 15.0)
-                    .fill(.clear)
-                    .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
-            )
         }
         .padding(10)
         .frame(width: 275)

@@ -150,12 +150,14 @@ final class CommandListener {
                 let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
                 
                 if !newKeyString.isEmpty {
-                    // SwiftData requires operations to run on the MainActor, which DispatchQueue.main.async handles!
+                    
+                    print("Key string: \(newKeyString)")
+                   
                     DispatchQueue.main.async {
                         let activeIndex = self.commandManager.currentIndex
                         let context = DataManager.shared.context
                         
-                        // --- 1. HANDLE DUPLICATES (STEALING) ---
+                        
                         if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
                             if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
                                 return existingChar == newKeyString
@@ -197,6 +199,39 @@ final class CommandListener {
                 }
                 
                 return nil
+            }
+            
+            // --- THE LOOKUP AND LAUNCH BLOCK ---
+            if hasControl && hasOption && !commandManager.isInKeybindUpdateMode {
+                
+                // 1. Get the raw string directly from your Keymaps dictionary!
+                // We grab the string and immediately uppercase it so 'c' becomes 'C'
+                if let pressedString = self.keymaps.mappings[keyCode]?.uppercased() {
+                    
+                    // 2. Scan the currentPaths array for a match
+                    if let matchedPath = self.commandManager.currentPaths.first(where: { path in
+                        if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
+                            return existingChar == pressedString
+                        }
+                        return false
+                    }) {
+                        DispatchQueue.main.async {
+                            
+                            if !matchedPath.isFrontmost {
+                                matchedPath.moveToApp()
+                            } else {
+                                matchedPath.moveFromApp()
+                            }
+                            
+                            self.isListeningForPath = false
+                            self.commandManager.isShowingCommands = false
+                            self.commandManager.resetIndex()
+                            PathsWindowManager.shared.hide()
+                        }
+                        
+                        return nil
+                    }
+                }
             }
             
             if isListeningForPath {
