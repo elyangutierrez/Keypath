@@ -5,10 +5,11 @@
 //  Created by Elyan Gutierrez on 3/26/26.
 //
 
+import SwiftData
 import SwiftUI
 
 struct PathsView: View {
-    
+    @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
@@ -83,6 +84,18 @@ struct PathsView: View {
         }
         .onAppear {
             paths = applicationManager.getRunningApplications().sorted()
+            let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
+            
+            if !existingKeybinds.isEmpty {
+                for keybind in existingKeybinds {
+                    for path in paths {
+                        if path.application.localizedName ?? "" == keybind.appName {
+                            path.keybind = keybind.keybind
+                        }
+                    }
+                }
+            }
+            
             commandManager.currentNumberOfApps = paths.count
             commandManager.resetIndex()
             commandManager.setPaths(paths)

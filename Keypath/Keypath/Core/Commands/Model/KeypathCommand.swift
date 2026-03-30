@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import SwiftData
 
-@Observable
+@Model
 class KeypathCommand: Identifiable, Comparable {
     var id = UUID()
     var icon: String

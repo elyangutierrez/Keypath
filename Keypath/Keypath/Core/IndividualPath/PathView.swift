@@ -32,7 +32,7 @@ struct PathView: View {
                     Spacer()
                     
                     VStack {
-                        HStack(spacing: -10.0) {
+                        HStack(spacing: -7.0) {
                             if let keybind = path.keybind {
                                 if case let .symbol(sym) = keybind.key1 {
                                     Image(systemName: sym)

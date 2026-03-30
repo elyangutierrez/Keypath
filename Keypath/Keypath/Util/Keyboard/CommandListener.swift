@@ -9,6 +9,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 import Observation
+import SwiftData
 
 // 1. The C-style callback function required by CoreGraphics
 func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
@@ -149,10 +150,12 @@ final class CommandListener {
                 let newKeyString = String(utf16CodeUnits: chars, count: length).uppercased()
                 
                 if !newKeyString.isEmpty {
+                    // SwiftData requires operations to run on the MainActor, which DispatchQueue.main.async handles!
                     DispatchQueue.main.async {
                         let activeIndex = self.commandManager.currentIndex
+                        let context = DataManager.shared.context
                         
-                       
+                        // --- 1. HANDLE DUPLICATES (STEALING) ---
                         if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
                             if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
                                 return existingChar == newKeyString
@@ -161,13 +164,15 @@ final class CommandListener {
                         }) {
                             if duplicateIndex != activeIndex {
                                 self.commandManager.currentPaths[duplicateIndex].keybind = nil
-                                
                                 let oldAppName = self.commandManager.currentPaths[duplicateIndex].application.localizedName ?? "App"
-                                print("Stole keybind '\(newKeyString)' from \(oldAppName)")
+                                
+                                if let stolenSave = DataManager.shared.fetchSavedKeybind(for: oldAppName) {
+                                    context.delete(stolenSave)
+                                }
+                                
                             }
                         }
                         
-                        // construct and assign the new Keybind
                         let newBind = Keybind(
                             key1: .symbol("control"),
                             key2: .symbol("option"),
@@ -175,9 +180,17 @@ final class CommandListener {
                         )
                         
                         self.commandManager.currentPaths[activeIndex].keybind = newBind
-                        
                         let targetAppName = self.commandManager.currentPaths[activeIndex].application.localizedName ?? "App"
-                        print("Successfully mapped '\(newKeyString)' to \(targetAppName)")
+                        
+                        if let existingSave = DataManager.shared.fetchSavedKeybind(for: targetAppName) {
+                            existingSave.keybind = newBind
+                        } else {
+                            let newSave = SavedKeybind(appName: targetAppName, keybind: newBind)
+                            context.insert(newSave)
+                        }
+                        
+                        try? context.save()
+                        print("Saved '\(newKeyString)' to SwiftData for \(targetAppName)")
                         
                         self.commandManager.isInKeybindUpdateMode = false
                     }

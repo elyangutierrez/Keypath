@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum CommandType {
+enum CommandType: Codable {
     case letter(String)
     case symbol(String)
 }
