@@ -127,9 +127,18 @@ struct PathView: View {
             }
         }
         .task {
-            if screenshotImage == nil {
-                screenshotImage = await screenshotManager.getApplicationImage(app: path.application)
-            }
+            guard screenshotImage != nil else { return }
+            await getScreenshot()
+        }
+    }
+    
+    func getScreenshot() async {
+        do {
+            screenshotImage = try await screenshotManager.getApplicationImage(app: path.application)
+        } catch let error as ScreenshotError {
+            print("[\(error.title)] \(error.localizedDescription)")
+        } catch {
+            print("An unexpected error occurred: \(error)")
         }
     }
 }
