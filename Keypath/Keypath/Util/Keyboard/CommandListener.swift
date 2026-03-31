@@ -11,16 +11,6 @@ import Foundation
 import Observation
 import SwiftData
 
-// 1. The C-style callback function required by CoreGraphics
-func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
-    // Retrieve our CommandListener instance from the refcon pointer
-    guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
-    let listener = Unmanaged<CommandListener>.fromOpaque(refcon).takeUnretainedValue()
-    
-    // Route the event back into our Swift class
-    return listener.handleEvent(proxy: proxy, type: type, event: event)
-}
-
 @Observable
 final class CommandListener {
     var isComboPrimed = false
@@ -44,7 +34,13 @@ final class CommandListener {
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: CGEventMask(eventMask),
-            callback: eventTapCallback,
+            callback: { (proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? in
+                guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
+                
+                let listener = Unmanaged<CommandListener>.fromOpaque(refcon).takeUnretainedValue()
+                
+                return listener.handleEvent(proxy: proxy, type: type, event: event)
+            },
             userInfo: observer
         ) else {
             print("Failed to create event tap. Make sure you have Accessibility permissions!")
