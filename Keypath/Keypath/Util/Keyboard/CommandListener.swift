@@ -76,17 +76,21 @@ final class CommandListener {
                 if isListeningForPath {
                     commandManager.isShowingCommands = false
                     isListeningForPath = false
-                    DispatchQueue.main.async { PathsWindowManager.shared.hide() }
+                    Task { @MainActor in
+                        PathsWindowManager.shared.hide()
+                    }
                 } else {
                     isListeningForPath = true
-                    DispatchQueue.main.async { PathsWindowManager.shared.show() }
+                    Task { @MainActor in
+                        PathsWindowManager.shared.show()
+                    }
                 }
                 
                 return nil
             }
             
             if hasControl && hasOption && keyCode == keymaps.reversed["c"] && isListeningForPath {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.commandManager.isShowingCommands.toggle()
                 }
                 
@@ -94,7 +98,7 @@ final class CommandListener {
             }
             
             if hasControl && hasOption && keyCode == keymaps.reversed["s"] {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.commandManager.isInSelectionMode.toggle()
                     
                     if !self.commandManager.isInSelectionMode {
@@ -109,7 +113,7 @@ final class CommandListener {
                 keyCode == keymaps.reversed["leftarrow"]
             {
                 // shift selection by one to left via index
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.commandManager.shiftSelectionToLeft()
                 }
                 return nil
@@ -119,16 +123,16 @@ final class CommandListener {
                 keyCode == keymaps.reversed["rightarrow"]
             {
                 // shift selection by one to right via index
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.commandManager.shiftSelectionToRight()
                 }
                 return nil
             }
             
             if hasControl && hasOption && keyCode == keymaps.reversed["u"] {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.commandManager.isInKeybindUpdateMode.toggle()
-                    print("Listening for new keybind...")
+//                    print("Listening for new keybind...") # DEBUG
                 }
                 return nil
             }
@@ -136,9 +140,9 @@ final class CommandListener {
             if commandManager.isInKeybindUpdateMode {
                 
                 if keyCode == keymaps.reversed["esc"] {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self.commandManager.isInKeybindUpdateMode = false
-                        print("Cancelled keybind update.")
+//                        print("Cancelled keybind update.") # DEBUG
                     }
                     return nil
                 }
@@ -151,12 +155,11 @@ final class CommandListener {
                 
                 if !keyString.isEmpty {
                     
-                    print("Key string: \(keyString)")
+//                    print("Key string: \(keyString)") # DEBUG
                    
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         let activeIndex = self.commandManager.currentIndex
                         let context = DataManager.shared.context
-                        
                         
                         if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
                             if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
@@ -192,7 +195,7 @@ final class CommandListener {
                         }
                         
                         try? context.save()
-                        print("Saved '\(keyString)' to SwiftData for \(targetAppName)")
+//                        print("Saved '\(keyString)' to SwiftData for \(targetAppName)") # DEBUG
                         
                         self.commandManager.isInKeybindUpdateMode = false
                     }
@@ -215,7 +218,7 @@ final class CommandListener {
                         }
                         return false
                     }) {
-                        DispatchQueue.main.async {
+                        Task { @MainActor in
                             
                             if !matchedPath.isFrontmost {
                                 matchedPath.moveToApp()
@@ -240,7 +243,9 @@ final class CommandListener {
                     commandManager.isShowingCommands = false
                     commandManager.resetIndex()
                     isListeningForPath = false
-                    DispatchQueue.main.async { PathsWindowManager.shared.hide() }
+                    Task { @MainActor in
+                        PathsWindowManager.shared.hide()
+                    }
                     return nil
                 }
                 
