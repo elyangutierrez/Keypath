@@ -10,20 +10,6 @@ import SwiftUI
 struct BottomBarView: View {
     var body: some View {
         HStack {
-            VStack {
-                Button(action:{
-                    // TODO: implement settings...
-                }) {
-                    Image(systemName: "gear")
-                        .frame(width: 25, height: 25)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5.0)
-                                .fill(.quaternary)
-                                .frame(width: 23, height: 23)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
             
             Spacer()
             
