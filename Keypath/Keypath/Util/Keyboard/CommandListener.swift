@@ -216,10 +216,10 @@ final class CommandListener {
                     }) {
                         Task { @MainActor in
                             
-                            if !matchedPath.isFrontmost {
-                                matchedPath.moveToApp()
-                            } else {
+                            if matchedPath.isWindowOpened && matchedPath.application.isActive {
                                 matchedPath.moveFromApp()
+                            } else {
+                                matchedPath.moveToApp()
                             }
                             
                             self.isListeningForPath = false

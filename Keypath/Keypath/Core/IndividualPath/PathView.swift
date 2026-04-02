@@ -127,7 +127,7 @@ struct PathView: View {
             }
         }
         .task {
-            guard screenshotImage != nil else { return }
+            guard screenshotImage == nil else { return }
             await getScreenshot()
         }
     }

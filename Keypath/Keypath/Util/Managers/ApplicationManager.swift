@@ -12,7 +12,8 @@ import Foundation
 final class ApplicationManager {
     let workspace = NSWorkspace.shared
     
-    func getRunningApplications() -> [Keypath] {
+    func getPaths() -> [Keypath] {
+        
         let runningApplications = workspace.runningApplications
         
         let regularPolicyApplications = runningApplications.filter { $0.activationPolicy == .regular }

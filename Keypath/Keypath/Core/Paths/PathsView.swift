@@ -83,7 +83,15 @@ struct PathsView: View {
             }
         }
         .onAppear {
-            paths = applicationManager.getRunningApplications().sorted()
+            
+            paths = applicationManager.getPaths()
+            
+            for path in paths {
+                if path.hasVisibleWindow {
+                    path.isWindowOpened = true
+                }
+            }
+            
             let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
             
             if !existingKeybinds.isEmpty {
