@@ -14,9 +14,8 @@ struct KeypathApp: App {
     
     var body: some Scene {
         // 1. We replace WindowGroup with MenuBarExtra so it lives in the top right!
-        MenuBarExtra("Keypath", systemImage: "command.square") {
-            
-            // 2. Add some basic menu bar controls
+        
+        MenuBarExtra {
             Button("Toggle Keypath HUD") {
                 // Manually trigger your HUD from the menu bar as a fallback
                 let manager = KeypathCommandManager.shared
@@ -37,7 +36,16 @@ struct KeypathApp: App {
                 NSApplication.shared.terminate(nil)
             }
             .keyboardShortcut("q", modifiers: [.command])
-            
+        } label: {
+            let image: NSImage = {
+                let ratio = $0.size.height / $0.size.width
+                $0.size.height = 14
+                $0.size.width = 15 / ratio
+                return $0
+            } (NSImage(resource: .superKeyLight))
+
+            Image(nsImage: image)
         }
+        .menuBarExtraStyle(.menu)
     }
 }

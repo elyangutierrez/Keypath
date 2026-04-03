@@ -12,6 +12,8 @@ struct PathView: View {
     @State private var screenshotManager = ScreenshotManager()
     @State private var commandManager = KeypathCommandManager.shared
     
+    @State private var hasCapturedInitialScreenshots: Bool = false
+    
     @State private var screenshotImage: CGImage?
     
     @Bindable var path: Keypath
@@ -126,9 +128,14 @@ struct PathView: View {
                 }
             }
         }
-        .task {
-            guard screenshotImage == nil else { return }
-            await getScreenshot()
+        .onAppear {
+            if !hasCapturedInitialScreenshots {
+                Task {
+                    guard screenshotImage == nil else { return }
+                    await getScreenshot()
+                }
+                hasCapturedInitialScreenshots = true
+            }
         }
     }
     
