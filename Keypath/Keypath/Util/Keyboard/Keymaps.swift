@@ -17,7 +17,7 @@ struct Keymaps {
         38: "j", 40: "k", 37: "l",
         6: "z", 7: "x", 8: "c", 9: "v", 11: "b", 45: "n", 46: "m",
         53: "esc", 123: "leftarrow", 124: "rightarrow", 125: "downarrow", 126: "uparrow",
-        76: "enter", 36: "return"
+        76: "enter", 36: "return", 44: "/"
     ]
     
     let validKeybindMappings: [Int: String] = [

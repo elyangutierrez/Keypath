@@ -67,6 +67,18 @@ final class CommandListener {
             let hasControl = flags.contains(.maskControl)
             let hasOption = flags.contains(.maskAlternate)
             
+            if hasControl && hasOption && keyCode == keymaps.reversed["/"] {
+                if !commandManager.isInKeybindsListMode {
+                    Task { @MainActor in
+                        self.commandManager.isInKeybindsListMode = true
+                    }
+                } else {
+                    Task { @MainActor in
+                        self.commandManager.isInKeybindsListMode = false
+                    }
+                }
+            }
+            
             if hasControl && hasOption && keyCode == keymaps.reversed["k"] {
                 
                 if isListeningForPath {

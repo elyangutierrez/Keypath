@@ -26,6 +26,9 @@ struct Commands {
         )),
         KeypathCommand(icon: "command", name: "Assign Path Keybind", keybind: Keybind(
             key1: .symbol("control"), key2: .symbol("option"), key3: .letter("U")
+        )),
+        KeypathCommand(icon: "command", name: "Show All Keybinds", keybind: Keybind(
+            key1: .symbol("control"), key2: .symbol("option"), key3: .letter("/")
         ))
     ]
 }
