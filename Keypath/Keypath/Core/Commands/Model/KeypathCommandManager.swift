@@ -14,6 +14,7 @@ final class KeypathCommandManager {
     var isShowingCommands: Bool = false
     var isInSelectionMode: Bool = false
     var isInKeybindUpdateMode: Bool = false
+    var isShowingKeybinds: Bool = false
     
     var currentIndex: Int = 0
     var currentNumberOfApps: Int = 0

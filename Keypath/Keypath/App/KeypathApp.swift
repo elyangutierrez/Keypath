@@ -16,7 +16,7 @@ struct KeypathApp: App {
         // 1. We replace WindowGroup with MenuBarExtra so it lives in the top right!
         
         MenuBarExtra {
-            Button("Toggle Keypath HUD") {
+            Button("Show All Keypaths") {
                 // Manually trigger your HUD from the menu bar as a fallback
                 let manager = KeypathCommandManager.shared
                 if appDelegate.commandListener.isListeningForPath {

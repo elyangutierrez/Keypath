@@ -85,6 +85,14 @@ final class CommandListener {
                 return nil
             }
             
+            if hasControl && hasOption && keyCode == keymaps.reversed["/"] && isListeningForPath {
+                Task { @MainActor in
+                    self.commandManager.isShowingKeybinds.toggle()
+                }
+                
+                return nil
+            }
+            
             if hasControl && hasOption && keyCode == keymaps.reversed["c"] && isListeningForPath {
                 Task { @MainActor in
                     self.commandManager.isShowingCommands.toggle()
