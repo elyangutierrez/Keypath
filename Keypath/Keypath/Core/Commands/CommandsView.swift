@@ -78,6 +78,7 @@ struct CommandsView: View {
                                     RoundedRectangle(cornerRadius: 10.0)
                                         .fill(cmd.isHovered ? .gray.opacity(0.2) : .clear)
                                 )
+                                .contentShape(RoundedRectangle(cornerRadius: 10.0))
                                 .onHover { hovering in
                                     withAnimation(.spring(duration: 0.3)) {
                                         cmd.isHovered = hovering

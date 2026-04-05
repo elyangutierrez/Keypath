@@ -19,7 +19,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("App is running invisibly in the background!")
             
             PathsWindowManager.shared.setupPanel(with: PathsView())
-            KeybindsListWindowManager.shared.setupPanel(with: KeybindsListView())
             
             commandListener.start()
         #endif

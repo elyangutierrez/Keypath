@@ -68,6 +68,20 @@ struct PathsView: View {
                                 }
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                                 .padding()
+                            } else if commandManager.isShowingKeybinds {
+                                VStack {
+                                    VStack {
+                                        KeybindsListView()
+                                    }
+                                    .frame(width: 315, height: 250)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 15.0)
+                                            .fill(.clear)
+                                            .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
+                                    )
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                                .padding()
                             }
                         }
                     } else {
