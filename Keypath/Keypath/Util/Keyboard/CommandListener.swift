@@ -71,10 +71,12 @@ final class CommandListener {
                 if !commandManager.isInKeybindsListMode {
                     Task { @MainActor in
                         self.commandManager.isInKeybindsListMode = true
+                        KeybindsListWindowManager.shared.show()
                     }
                 } else {
                     Task { @MainActor in
                         self.commandManager.isInKeybindsListMode = false
+                        KeybindsListWindowManager.shared.hide()
                     }
                 }
             }
