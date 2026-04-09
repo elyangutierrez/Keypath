@@ -10,6 +10,7 @@ import CoreGraphics
 import Foundation
 import Observation
 import SwiftData
+import SwiftUI
 
 @Observable
 final class CommandListener {
@@ -18,6 +19,7 @@ final class CommandListener {
     private var eventTap: CFMachPort?
     
     var keymaps = Keymaps()
+//    var commandAnimator = CommandAnimator()
     
     var commandManager = KeypathCommandManager.shared
 
@@ -73,12 +75,16 @@ final class CommandListener {
                     commandManager.isShowingCommands = false
                     isListeningForPath = false
                     Task { @MainActor in
-                        PathsWindowManager.shared.hide()
+                        withAnimation(.spring(duration: 0.3)) {
+                            PathsWindowManager.shared.hide()
+                        }
                     }
                 } else {
                     isListeningForPath = true
                     Task { @MainActor in
-                        PathsWindowManager.shared.show()
+                        withAnimation(.spring(duration: 0.3)) {
+                            PathsWindowManager.shared.show()
+                        }
                     }
                 }
                 
@@ -87,7 +93,9 @@ final class CommandListener {
             
             if hasControl && hasOption && keyCode == keymaps.reversed["/"] && isListeningForPath {
                 Task { @MainActor in
-                    self.commandManager.isShowingKeybinds.toggle()
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.isShowingKeybinds.toggle()
+                    }
                 }
                 
                 return nil
@@ -95,7 +103,9 @@ final class CommandListener {
             
             if hasControl && hasOption && keyCode == keymaps.reversed["c"] && isListeningForPath {
                 Task { @MainActor in
-                    self.commandManager.isShowingCommands.toggle()
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.isShowingCommands.toggle()
+                    }
                 }
                 
                 return nil
@@ -103,7 +113,9 @@ final class CommandListener {
             
             if hasControl && hasOption && keyCode == keymaps.reversed["s"] {
                 Task { @MainActor in
-                    self.commandManager.isInSelectionMode.toggle()
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.isInSelectionMode.toggle()
+                    }
                     
                     if !self.commandManager.isInSelectionMode {
                         self.commandManager.resetIndex()
@@ -118,7 +130,9 @@ final class CommandListener {
             {
                 // shift selection by one to left via index
                 Task { @MainActor in
-                    self.commandManager.shiftSelectionToLeft()
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.shiftSelectionToLeft()
+                    }
                 }
                 return nil
             }
@@ -128,14 +142,18 @@ final class CommandListener {
             {
                 // shift selection by one to right via index
                 Task { @MainActor in
-                    self.commandManager.shiftSelectionToRight()
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.shiftSelectionToRight()
+                    }
                 }
                 return nil
             }
             
             if hasControl && hasOption && keyCode == keymaps.reversed["u"] {
                 Task { @MainActor in
-                    self.commandManager.isInKeybindUpdateMode.toggle()
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.isInKeybindUpdateMode.toggle()
+                    }
 //                    print("Listening for new keybind...") # DEBUG
                 }
                 return nil
@@ -145,7 +163,9 @@ final class CommandListener {
                 
                 if keyCode == keymaps.reversed["esc"] {
                     Task { @MainActor in
-                        self.commandManager.isInKeybindUpdateMode = false
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.commandManager.isInKeybindUpdateMode = false
+                        }
 //                        print("Cancelled keybind update.") # DEBUG
                     }
                     return nil
@@ -248,7 +268,9 @@ final class CommandListener {
                     commandManager.resetIndex()
                     isListeningForPath = false
                     Task { @MainActor in
-                        PathsWindowManager.shared.hide()
+                        withAnimation(.spring(duration: 0.3)) {
+                            PathsWindowManager.shared.hide()
+                        }
                     }
                     return nil
                 }
