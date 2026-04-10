@@ -14,6 +14,7 @@ struct PathsView: View {
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
     @State private var paths: [Keypath] = []
+    @State private var scrollID: Int? = 0
     
     let columns: [GridItem] = [
         GridItem(.fixed(300)),
@@ -32,25 +33,26 @@ struct PathsView: View {
                 VStack {
                     if !paths.isEmpty {
                         
-                        ScrollViewReader { proxy in
-                            ScrollView {
-                                LazyVGrid(columns: columns, spacing: 15.0) {
-                                    ForEach(Array(paths.enumerated()), id: \.element) { index, path in
-                                        PathView(
-                                            path: path,
-                                            isSelected: commandManager.currentIndex == index && commandManager.isInSelectionMode
-                                        )
-                                        .id(index)
-                                    }
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 15.0) {
+                                ForEach(Array(paths.enumerated()), id: \.element) { index, path in
+                                    PathView(
+                                        path: path,
+                                        isSelected: commandManager.currentIndex == index && commandManager.isInSelectionMode
+                                    )
+                                    .id(index)
                                 }
                             }
-                            .scrollIndicators(.never)
-                            .contentMargins(.bottom, 30, for: .scrollContent)
-                            .padding(.horizontal)
-                            .onChange(of: commandManager.currentIndex) { _, newIndex in
-                                withAnimation(.spring(response: 0.3)) {
-                                    proxy.scrollTo(newIndex, anchor: .center)
-                                }
+                            .scrollTargetLayout()
+                        }
+                        .scrollIndicators(.never)
+                        .contentMargins(.bottom, 30, for: .scrollContent)
+                        .padding(.horizontal)
+                        .scrollPosition(id: $scrollID)
+                        .scrollTargetBehavior(.viewAligned)
+                        .onChange(of: commandManager.currentIndex) { _, newIndex in
+                            withAnimation(.spring(response: 0.3)) {
+                                scrollID = newIndex
                             }
                         }
                         .overlay {
@@ -121,6 +123,7 @@ struct PathsView: View {
             commandManager.currentNumberOfApps = paths.count
             commandManager.resetIndex()
             commandManager.setPaths(paths)
+            scrollID = 0
         }
         .onChange(of: paths.count) { _, newCount in
             commandManager.currentNumberOfApps = newCount
