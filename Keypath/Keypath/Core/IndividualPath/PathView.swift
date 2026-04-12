@@ -12,8 +12,6 @@ struct PathView: View {
     @State private var screenshotManager = ScreenshotManager()
     @State private var commandManager = KeypathCommandManager.shared
     
-    @State private var hasCapturedInitialScreenshots: Bool = false
-    
     @State private var screenshotImage: CGImage?
     
     @Bindable var path: Keypath
@@ -128,24 +126,31 @@ struct PathView: View {
                 }
             }
         }
-        .onAppear {
-            if !hasCapturedInitialScreenshots {
-                Task {
-                    guard screenshotImage == nil else { return }
-                    await getScreenshot()
-                }
-                hasCapturedInitialScreenshots = true
-            }
+        .task {
+            await runScreenshotLoop()
         }
     }
     
-    func getScreenshot() async {
+    func runScreenshotLoop() async {
         do {
-            screenshotImage = try await screenshotManager.getApplicationImage(app: path.application)
+            while !Task.isCancelled {
+                let image = try await screenshotManager
+                    .getApplicationImage(app: path.application)
+                
+                if let image {
+                    await MainActor.run {
+                        self.screenshotImage = image
+                    }
+                }
+                
+                try await Task.sleep(nanoseconds: 5_000_000_000)
+            }
+        } catch is CancellationError {
+            // Clean exit — no logging needed
         } catch let error as ScreenshotError {
             print("[\(error.title)] \(error.localizedDescription)")
         } catch {
-            print("An unexpected error occurred: \(error)")
+            print("Error: \(error)")
         }
     }
 }
