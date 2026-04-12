@@ -25,6 +25,10 @@ struct PathsView: View {
         colorScheme == .dark ? .black : .white
     }
     
+    var sortedPaths: [Keypath] {
+        return paths.sorted()
+    }
+    
     var body: some View {
         ZStack {
             GlassBackground()
@@ -35,7 +39,7 @@ struct PathsView: View {
                         
                         ScrollView {
                             LazyVGrid(columns: columns, spacing: 15.0) {
-                                ForEach(Array(paths.enumerated()), id: \.element) { index, path in
+                                ForEach(Array(sortedPaths.enumerated()), id: \.element) { index, path in
                                     PathView(
                                         path: path,
                                         isSelected: commandManager.currentIndex == index && commandManager.isInSelectionMode
