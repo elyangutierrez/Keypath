@@ -107,6 +107,7 @@ struct PathView: View {
                 .fill(.clear)
                 .glassEffect(.regular.tint(isSelected && !isChangingKeybind ? .blue.opacity(0.6) : .clear), in: .rect(cornerRadius: 15.0))
         )
+        .contentShape(.rect(cornerRadius: 15.0))
         .overlay {
             if isChangingKeybind {
                 ZStack {
