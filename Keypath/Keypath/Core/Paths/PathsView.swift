@@ -42,9 +42,16 @@ struct PathsView: View {
                                 ForEach(Array(sortedPaths.enumerated()), id: \.element) { index, path in
                                     PathView(
                                         path: path,
-                                        isSelected: commandManager.currentIndex == index && commandManager.isInSelectionMode
+                                        isSelected: getSelection(index)
                                     )
                                     .id(index)
+                                    .onHover { hovering in
+                                        if hovering && commandManager.isInSelectionMode {
+                                            withAnimation(.spring(duration: 0.3)) {
+                                                commandManager.currentIndex = index
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             .scrollTargetLayout()
@@ -133,6 +140,11 @@ struct PathsView: View {
             commandManager.currentNumberOfApps = newCount
             commandManager.setPaths(paths)
         }
+    }
+    
+    func getSelection(_ pathIndex: Int) -> Bool {
+        guard commandManager.isInSelectionMode else { return false }
+        return commandManager.currentIndex == pathIndex
     }
 }
 
