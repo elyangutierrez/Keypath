@@ -24,6 +24,13 @@ final class KeypathCommandManager {
     
     func setPaths(_ paths: [Keypath]) {
         currentPaths = paths
+        currentNumberOfApps = paths.count
+        
+        if currentIndex >= currentNumberOfApps && currentNumberOfApps > 0 {
+            currentIndex = currentNumberOfApps - 1
+        } else if currentNumberOfApps == 0 {
+            currentIndex = 0
+        }
     }
     
     func shiftSelectionToLeft() {

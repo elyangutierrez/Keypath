@@ -25,10 +25,6 @@ struct PathsView: View {
         colorScheme == .dark ? .black : .white
     }
     
-    var sortedPaths: [Keypath] {
-        return paths.sorted()
-    }
-    
     var body: some View {
         ZStack {
             GlassBackground()
@@ -39,7 +35,7 @@ struct PathsView: View {
                         
                         ScrollView {
                             LazyVGrid(columns: columns, spacing: 15.0) {
-                                ForEach(Array(sortedPaths.enumerated()), id: \.element) { index, path in
+                                ForEach(Array(paths.enumerated()), id: \.element) { index, path in
                                     PathView(
                                         path: path,
                                         isSelected: getSelection(index)
@@ -131,13 +127,11 @@ struct PathsView: View {
                 }
             }
             
-            commandManager.currentNumberOfApps = paths.count
             commandManager.resetIndex()
             commandManager.setPaths(paths)
             scrollID = 0
         }
         .onChange(of: paths.count) { _, newCount in
-            commandManager.currentNumberOfApps = newCount
             commandManager.setPaths(paths)
         }
     }
