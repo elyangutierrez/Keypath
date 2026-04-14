@@ -30,6 +30,6 @@ final class ApplicationManager {
             )
         }
         
-        return holder
+        return holder.sorted()
     }
 }
