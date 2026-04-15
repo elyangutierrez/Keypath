@@ -15,12 +15,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let commandListener = CommandListener()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Ensure auto-launch status matches user preference
+        Config.shared.syncAutoLaunch(isEnabled: Config.shared.getAutoLaunch())
+        
         #if DEBUG
             print("App is running invisibly in the background!")
-            
-            PathsWindowManager.shared.setupPanel(with: PathsView())
-            
-            commandListener.start()
         #endif
+        
+        PathsWindowManager.shared.setupPanel(with: PathsView())
+        
+        commandListener.start()
     }
 }

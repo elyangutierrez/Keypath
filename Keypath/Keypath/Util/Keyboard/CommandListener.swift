@@ -212,10 +212,10 @@ final class CommandListener {
                         let targetAppName = self.commandManager.currentPaths[activeIndex].application.localizedName ?? "App"
                         
                         if let existingSave = DataManager.shared.fetchSavedKeybind(for: targetAppName) {
-                            existingSave.keybind = newBind
+                            existingSave.keybind = newBind // update existing bind
                         } else {
                             let newSave = SavedKeybind(appName: targetAppName, keybind: newBind)
-                            context.insert(newSave)
+                            context.insert(newSave) // set new bind
                         }
                         
                         try? context.save()
