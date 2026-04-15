@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import ServiceManagement
 
 class Config {
     
@@ -29,12 +30,34 @@ class Config {
         
         guard let isEnabled = configDict["IS_AUTO_LAUNCH_ENABLED"] as? Bool else { return }
         
-        configDict["IS_AUTO_LAUNCH_ENABLED"] = !isEnabled
+        let newValue = !isEnabled
+        configDict["IS_AUTO_LAUNCH_ENABLED"] = newValue
         
         defaults.set(configDict, forKey: key)
+        
+        // Synchronize with ServiceManagement
+        syncAutoLaunch(isEnabled: newValue)
     }
     
     func getAutoLaunch() -> Bool {
         return (userDictionary()["IS_AUTO_LAUNCH_ENABLED"] as? Bool) ?? false
+    }
+    
+    func syncAutoLaunch(isEnabled: Bool) {
+        let service = SMAppService.mainApp
+        
+        do {
+            if isEnabled {
+                if service.status != .enabled {
+                    try service.register()
+                }
+            } else {
+                if service.status == .enabled {
+                    try service.unregister()
+                }
+            }
+        } catch {
+            print("Failed to update auto-launch status: \(error)")
+        }
     }
 }

@@ -17,7 +17,7 @@ struct KeypathApp: App {
         
         MenuBarExtra {
             
-            Button("Toggle Autolaunch") {
+            Button("Toggle Auto-Launch") {
                 let config = Config.shared
                 
                 config.setAutoLaunch()
