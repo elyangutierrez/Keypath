@@ -14,7 +14,7 @@ struct BottomBarView: View {
         HStack {
             Button(action: {
                 withAnimation(.spring(duration: 0.3)) {
-                    navigationManager.setRoute(.settings)
+                    navigationManager.toggleRoute()
                 }
             }) {
                 Image(systemName: "gear")

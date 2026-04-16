@@ -19,4 +19,8 @@ class NavigationManager {
     func setRoute(_ route: Route) {
         self.route = route
     }
+    
+    func toggleRoute() {
+        self.route = (self.route == .paths) ? .settings : .paths
+    }
 }

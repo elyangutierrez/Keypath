@@ -12,6 +12,28 @@ import Foundation
 final class ApplicationManager {
     let workspace = NSWorkspace.shared
     
+    func getApplications() -> [ListApplication] {
+        let applicationsURL = URL(fileURLWithPath: "/Applications")
+        let fileManager = FileManager.default
+        var holder: [ListApplication] = []
+        
+        do {
+            let appURLs = try fileManager.contentsOfDirectory(at: applicationsURL, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+            
+            for appURL in appURLs {
+                if let bundle = Bundle(url: appURL), let bundleId = bundle.bundleIdentifier {
+                    holder.append(ListApplication(location: appURL, bundleId: bundleId))
+                }
+            }
+            
+            return holder
+        } catch {
+            print("ERROR: \(error)")
+        }
+        
+        return []
+    }
+    
     func getPaths() -> [Keypath] {
         
         let runningApplications = workspace.runningApplications
