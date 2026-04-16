@@ -22,7 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("App is running invisibly in the background!")
         #endif
         
-        PathsWindowManager.shared.setupPanel(with: PathsView())
+        PathsWindowManager.shared.setupPanel(with: RootView())
         
         commandListener.start()
     }

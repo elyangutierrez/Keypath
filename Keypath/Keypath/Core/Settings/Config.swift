@@ -16,7 +16,8 @@ class Config {
     let key = "CONFIGDICT"
     
     var configDictionary: [String: Any] = [
-        "IS_AUTO_LAUNCH_ENABLED": false
+        "IS_AUTO_LAUNCH_ENABLED": false,
+        "EXCLUDED_APPS": ["Finder", "Preview"]
     ]
     
     init() {}
@@ -35,12 +36,35 @@ class Config {
         
         defaults.set(configDict, forKey: key)
         
-        // Synchronize with ServiceManagement
         syncAutoLaunch(isEnabled: newValue)
     }
     
     func getAutoLaunch() -> Bool {
         return (userDictionary()["IS_AUTO_LAUNCH_ENABLED"] as? Bool) ?? false
+    }
+    
+    func getExcludedApps() -> [String] {
+        return (userDictionary()["EXCLUDED_APPS"] as? [String]) ?? ["Finder", "Preview"]
+    }
+    
+    func addExcludedApp(_ appName: String) {
+        var configDict = userDictionary()
+        var excludedApps = getExcludedApps()
+        if !excludedApps.contains(appName) {
+            excludedApps.append(appName)
+            configDict["EXCLUDED_APPS"] = excludedApps
+            defaults.set(configDict, forKey: key)
+        }
+    }
+    
+    func removeExcludedApp(_ appName: String) {
+        var configDict = userDictionary()
+        var excludedApps = getExcludedApps()
+        if let index = excludedApps.firstIndex(of: appName) {
+            excludedApps.remove(at: index)
+            configDict["EXCLUDED_APPS"] = excludedApps
+            defaults.set(configDict, forKey: key)
+        }
     }
     
     func syncAutoLaunch(isEnabled: Bool) {

@@ -8,8 +8,25 @@
 import SwiftUI
 
 struct BottomBarView: View {
+    @State private var navigationManager = NavigationManager.shared
+    
     var body: some View {
         HStack {
+            Button(action: {
+                withAnimation(.spring(duration: 0.3)) {
+                    navigationManager.toggleRoute()
+                }
+            }) {
+                Image(systemName: "gear")
+                    .fontWeight(.medium)
+                    .frame(width: 25, height: 25)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5.0)
+                            .fill(.quaternary)
+                            .frame(width: 23, height: 23)
+                    )
+            }
+            .buttonStyle(.plain)
             
             Spacer()
             

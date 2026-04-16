@@ -22,6 +22,7 @@ final class CommandListener {
 //    var commandAnimator = CommandAnimator()
     
     var commandManager = KeypathCommandManager.shared
+    var navigationManager = NavigationManager.shared
 
     func start() {
         // We want to listen for modifier key changes (Ctrl/Option) and normal key downs
@@ -60,6 +61,9 @@ final class CommandListener {
     }
 
     fileprivate func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        
+        if navigationManager.route == .settings { return Unmanaged.passUnretained(event) }
+        
         if type == .keyDown {
             isComboPrimed = false
             
