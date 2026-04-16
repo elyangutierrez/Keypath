@@ -18,7 +18,7 @@ final class ApplicationManager {
         
         let regularPolicyApplications = runningApplications.filter { $0.activationPolicy == .regular }
         
-        let excludedApplications = ["Finder", "Preview"]
+        let excludedApplications = Config.shared.getExcludedApps()
         
         let resultingApplications = regularPolicyApplications.filter { !excludedApplications.contains($0.localizedName ?? "") }
         
