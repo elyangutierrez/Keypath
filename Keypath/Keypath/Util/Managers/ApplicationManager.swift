@@ -34,8 +34,8 @@ final class ApplicationManager {
         return []
     }
     
-    func getPaths() -> [Keypath] {
-        
+    static func getPaths() -> [Keypath] {
+        let workspace = NSWorkspace.shared
         let runningApplications = workspace.runningApplications
         
         let regularPolicyApplications = runningApplications.filter { $0.activationPolicy == .regular }

@@ -14,7 +14,31 @@ struct RootView: View {
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
     @State private var navigationManager = NavigationManager.shared
-    @State private var paths: [Keypath] = []
+    
+    var paths: [Keypath] {
+        let currentPaths = ApplicationManager.getPaths()
+        
+        for path in currentPaths {
+            if path.hasVisibleWindow {
+                path.isWindowOpened = true
+            }
+        }
+        
+        let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
+        
+        if !existingKeybinds.isEmpty {
+            for keybind in existingKeybinds {
+                for path in currentPaths {
+                    if path.application.localizedName ?? "" == keybind.appName {
+                        path.keybind = keybind.keybind
+                    }
+                }
+            }
+        }
+        
+        return currentPaths
+    }
+    
     @State private var scrollID: Int? = 0
     
     let columns: [GridItem] = [
@@ -45,32 +69,11 @@ struct RootView: View {
             }
         }
         .onAppear {
-            
-            paths = applicationManager.getPaths()
-            
-            for path in paths {
-                if path.hasVisibleWindow {
-                    path.isWindowOpened = true
-                }
-            }
-            
-            let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
-            
-            if !existingKeybinds.isEmpty {
-                for keybind in existingKeybinds {
-                    for path in paths {
-                        if path.application.localizedName ?? "" == keybind.appName {
-                            path.keybind = keybind.keybind
-                        }
-                    }
-                }
-            }
-            
             commandManager.resetIndex()
             commandManager.setPaths(paths)
             scrollID = 0
         }
-        .onChange(of: paths.count) { _, newCount in
+        .onChange(of: navigationManager.route) { _, _ in
             commandManager.setPaths(paths)
         }
     }

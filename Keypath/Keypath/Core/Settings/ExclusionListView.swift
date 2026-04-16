@@ -62,7 +62,7 @@ struct ExclusionListView: View {
                             }) {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.title2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.primary)
                             }
                             .buttonStyle(.plain)
                         }
