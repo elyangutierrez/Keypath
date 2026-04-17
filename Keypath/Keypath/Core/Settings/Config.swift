@@ -54,6 +54,7 @@ class Config {
             excludedApps.append(appName)
             configDict["EXCLUDED_APPS"] = excludedApps
             defaults.set(configDict, forKey: key)
+            NotificationCenter.default.post(name: .excludedAppsDidChange, object: nil)
         }
     }
     
@@ -64,6 +65,7 @@ class Config {
             excludedApps.remove(at: index)
             configDict["EXCLUDED_APPS"] = excludedApps
             defaults.set(configDict, forKey: key)
+            NotificationCenter.default.post(name: .excludedAppsDidChange, object: nil)
         }
     }
     
@@ -85,3 +87,7 @@ class Config {
         }
     }
 }
+extension Notification.Name {
+    static let excludedAppsDidChange = Notification.Name("ExcludedAppsDidChange")
+}
+

@@ -59,7 +59,7 @@ struct RootView: View {
                 case .settings:
                     ExclusionListView()
                 case .paths:
-                    PathsView(paths: paths)
+                    PathsView(paths: commandManager.currentPaths)
                 }
                 
                 VStack {
@@ -74,6 +74,9 @@ struct RootView: View {
             scrollID = 0
         }
         .onChange(of: navigationManager.route) { _, _ in
+            commandManager.setPaths(paths)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .excludedAppsDidChange)) { _ in
             commandManager.setPaths(paths)
         }
     }

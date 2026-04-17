@@ -217,14 +217,17 @@ final class CommandListener {
                         
                         if let existingSave = DataManager.shared.fetchSavedKeybind(for: targetAppName) {
                             existingSave.keybind = newBind // update existing bind
+//                            print("Updating existing bind!")
                         } else {
                             let newSave = SavedKeybind(appName: targetAppName, keybind: newBind)
                             context.insert(newSave) // set new bind
+//                            print("Setting new bind!")
                         }
                         
                         try? context.save()
 //                        print("Saved '\(keyString)' to SwiftData for \(targetAppName)") # DEBUG
                         
+                        self.commandManager.hasUpdatedKeybinds.toggle()
                         self.commandManager.isInKeybindUpdateMode = false
                     }
                 }
