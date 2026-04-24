@@ -14,8 +14,12 @@ import SwiftUI
 
 @Observable
 final class CommandListener {
-    var isComboPrimed = false
-    var isListeningForPath = false
+    var isComboPrimed: Bool = false
+    var isListeningForPath: Bool = false
+    
+    var lastOptionPressTime: Date = .distantPast
+    var isKeypathPrimed: Bool = false
+    
     private var eventTap: CFMachPort?
     
     var keymaps = Keymaps()
@@ -64,103 +68,176 @@ final class CommandListener {
         
         if navigationManager.route == .settings { return Unmanaged.passUnretained(event) }
         
+        
+        if type == .flagsChanged {
+            let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+            
+           
+            if keyCode == keymaps.reversed["leftoption"] {
+                let isOptionDown = event.flags.contains(.maskAlternate)
+                
+                
+                if isOptionDown {
+                    let now = Date()
+                    
+                    
+                    if now.timeIntervalSince(lastOptionPressTime) < 0.3 {
+                        isKeypathPrimed = true
+                        print("Keypath Primed! Waiting for command...")
+                    }
+                    
+                    lastOptionPressTime = now
+                }
+            }
+            
+            return Unmanaged.passUnretained(event)
+        }
+        
         if type == .keyDown {
             isComboPrimed = false
             
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
-            let flags = event.flags
             
-            let hasControl = flags.contains(.maskControl)
-            let hasOption = flags.contains(.maskAlternate)
-            
-            if hasControl && hasOption && keyCode == keymaps.reversed["k"] {
+            if isKeypathPrimed {
                 
-                if isListeningForPath {
-                    commandManager.isShowingCommands = false
-                    isListeningForPath = false
+                if Date().timeIntervalSince(lastOptionPressTime) > 1.5 {
+                    isKeypathPrimed = false
+                    return Unmanaged.passUnretained(event) // Let the key type normally
+                }
+                
+                // 2. Keybinds List ( / )
+                if keyCode == keymaps.reversed["/"] || keyCode == 44 {
+                    
                     Task { @MainActor in
                         withAnimation(.spring(duration: 0.3)) {
-                            PathsWindowManager.shared.hide()
+                            self.commandManager.isShowingKeybinds.toggle()
                         }
-                    }
-                } else {
-                    isListeningForPath = true
-                    Task { @MainActor in
-                        withAnimation(.spring(duration: 0.3)) {
-                            PathsWindowManager.shared.show()
-                        }
-                    }
-                }
-                
-                return nil
-            }
-            
-            if hasControl && hasOption && keyCode == keymaps.reversed["/"] && isListeningForPath {
-                Task { @MainActor in
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.commandManager.isShowingKeybinds.toggle()
-                    }
-                }
-                
-                return nil
-            }
-            
-            if hasControl && hasOption && keyCode == keymaps.reversed["c"] && isListeningForPath {
-                Task { @MainActor in
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.commandManager.isShowingCommands.toggle()
-                    }
-                }
-                
-                return nil
-            }
-            
-            if hasControl && hasOption && keyCode == keymaps.reversed["s"] {
-                Task { @MainActor in
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.commandManager.isInSelectionMode.toggle()
                     }
                     
-                    if !self.commandManager.isInSelectionMode {
-                        self.commandManager.resetIndex()
-                    }
+                    isKeypathPrimed = false
+                    return nil
                 }
                 
-                return nil
-            }
-            
-            if hasControl && hasOption && commandManager.isInSelectionMode &&
-                keyCode == keymaps.reversed["leftarrow"]
-            {
-                // shift selection by one to left via index
-                Task { @MainActor in
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.commandManager.shiftSelectionToLeft()
+                // 3. Main HUD ( K )
+                if keyCode == keymaps.reversed["k"] {
+                    
+                    if isListeningForPath {
+                        commandManager.isShowingCommands = false
+                        isListeningForPath = false
+                        Task { @MainActor in
+                            withAnimation(.spring(duration: 0.3)) {
+                                PathsWindowManager.shared.hide()
+                            }
+                        }
+                    } else {
+                        isListeningForPath = true
+                        Task { @MainActor in
+                            withAnimation(.spring(duration: 0.3)) {
+                                PathsWindowManager.shared.show()
+                            }
+                        }
                     }
+                    
+                    isKeypathPrimed = false
+                    return nil
                 }
-                return nil
-            }
-            
-            if hasControl && hasOption && commandManager.isInSelectionMode &&
-                keyCode == keymaps.reversed["rightarrow"]
-            {
-                // shift selection by one to right via index
-                Task { @MainActor in
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.commandManager.shiftSelectionToRight()
+                
+                if keyCode == keymaps.reversed["c"] && isListeningForPath {
+                    Task { @MainActor in
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.commandManager.isShowingCommands.toggle()
+                        }
                     }
+                    
+                    isKeypathPrimed = false
+                    return nil
                 }
-                return nil
-            }
-            
-            if hasControl && hasOption && keyCode == keymaps.reversed["u"] {
-                Task { @MainActor in
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.commandManager.isInKeybindUpdateMode.toggle()
+                
+                if keyCode == keymaps.reversed["s"] {
+                    Task { @MainActor in
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.commandManager.isInSelectionMode.toggle()
+                        }
+                        
+                        if !self.commandManager.isInSelectionMode {
+                            self.commandManager.resetIndex()
+                        }
                     }
-//                    print("Listening for new keybind...") # DEBUG
+                    
+                    isKeypathPrimed = false
+                    return nil
                 }
-                return nil
+                
+                if commandManager.isInSelectionMode && keyCode == keymaps.reversed["leftarrow"]
+                {
+                    // shift selection by one to left via index
+                    Task { @MainActor in
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.commandManager.shiftSelectionToLeft()
+                        }
+                    }
+                    return nil
+                }
+                
+                if commandManager.isInSelectionMode &&
+                    keyCode == keymaps.reversed["rightarrow"]
+                {
+                    // shift selection by one to right via index
+                    Task { @MainActor in
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.commandManager.shiftSelectionToRight()
+                        }
+                    }
+                    
+                    isKeypathPrimed = false
+                    return nil
+                }
+                
+                if keyCode == keymaps.reversed["u"] {
+                    Task { @MainActor in
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.commandManager.isInKeybindUpdateMode.toggle()
+                        }
+                        //                    print("Listening for new keybind...") # DEBUG
+                    }
+                    
+                    isKeypathPrimed = false
+                    return nil
+                }
+                
+                // --- THE LOOKUP AND LAUNCH BLOCK ---
+                if !commandManager.isInKeybindUpdateMode {
+                    
+                    // 1. Get the raw string directly from your Keymaps dictionary!
+                    // We grab the string and immediately uppercase it so 'c' becomes 'C'
+                    if let pressedString = self.keymaps.mappings[keyCode]?.uppercased() {
+                        
+                        // 2. Scan the currentPaths array for a match
+                        if let matchedPath = self.commandManager.currentPaths.first(where: { path in
+                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
+                                return existingChar == pressedString
+                            }
+                            return false
+                        }) {
+                            Task { @MainActor in
+                                
+                                if matchedPath.isWindowOpened && matchedPath.application.isActive {
+                                    matchedPath.moveFromApp()
+                                } else {
+                                    matchedPath.moveToApp()
+                                }
+                                
+                                self.isListeningForPath = false
+                                self.commandManager.isShowingCommands = false
+                                self.commandManager.resetIndex()
+                                PathsWindowManager.shared.hide()
+                            }
+                        }
+                    }
+                    
+                    isKeypathPrimed = false
+                    return nil
+                }
             }
             
             if commandManager.isInKeybindUpdateMode {
@@ -170,7 +247,6 @@ final class CommandListener {
                         withAnimation(.spring(duration: 0.3)) {
                             self.commandManager.isInKeybindUpdateMode = false
                         }
-//                        print("Cancelled keybind update.") # DEBUG
                     }
                     return nil
                 }
@@ -183,8 +259,8 @@ final class CommandListener {
                 
                 if !keyString.isEmpty {
                     
-//                    print("Key string: \(keyString)") # DEBUG
-                   
+                    //                    print("Key string: \(keyString)") # DEBUG
+                    
                     Task { @MainActor in
                         let activeIndex = self.commandManager.currentIndex
                         let context = DataManager.shared.context
@@ -217,15 +293,15 @@ final class CommandListener {
                         
                         if let existingSave = DataManager.shared.fetchSavedKeybind(for: targetAppName) {
                             existingSave.keybind = newBind // update existing bind
-//                            print("Updating existing bind!")
+                            //                            print("Updating existing bind!")
                         } else {
                             let newSave = SavedKeybind(appName: targetAppName, keybind: newBind)
                             context.insert(newSave) // set new bind
-//                            print("Setting new bind!")
+                            //                            print("Setting new bind!")
                         }
                         
                         try? context.save()
-//                        print("Saved '\(keyString)' to SwiftData for \(targetAppName)") # DEBUG
+                        //                        print("Saved '\(keyString)' to SwiftData for \(targetAppName)") # DEBUG
                         
                         self.commandManager.hasUpdatedKeybinds.toggle()
                         self.commandManager.isInKeybindUpdateMode = false
@@ -233,39 +309,6 @@ final class CommandListener {
                 }
                 
                 return nil
-            }
-            
-            // --- THE LOOKUP AND LAUNCH BLOCK ---
-            if hasControl && hasOption && !commandManager.isInKeybindUpdateMode {
-                
-                // 1. Get the raw string directly from your Keymaps dictionary!
-                // We grab the string and immediately uppercase it so 'c' becomes 'C'
-                if let pressedString = self.keymaps.mappings[keyCode]?.uppercased() {
-                    
-                    // 2. Scan the currentPaths array for a match
-                    if let matchedPath = self.commandManager.currentPaths.first(where: { path in
-                        if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
-                            return existingChar == pressedString
-                        }
-                        return false
-                    }) {
-                        Task { @MainActor in
-                            
-                            if matchedPath.isWindowOpened && matchedPath.application.isActive {
-                                matchedPath.moveFromApp()
-                            } else {
-                                matchedPath.moveToApp()
-                            }
-                            
-                            self.isListeningForPath = false
-                            self.commandManager.isShowingCommands = false
-                            self.commandManager.resetIndex()
-                            PathsWindowManager.shared.hide()
-                        }
-                        
-                        return nil
-                    }
-                }
             }
             
             if isListeningForPath {
