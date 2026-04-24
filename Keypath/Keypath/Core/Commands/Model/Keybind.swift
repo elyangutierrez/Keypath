@@ -11,5 +11,4 @@ nonisolated
 struct Keybind: Codable {
     var key1: CommandType
     var key2: CommandType
-    var key3: CommandType
 }

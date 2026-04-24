@@ -34,24 +34,21 @@ struct PathView: View {
                     VStack {
                         HStack(spacing: -7.0) {
                             if let keybind = path.keybind {
-                                if case let .symbol(sym) = keybind.key1 {
-                                    Image(systemName: sym)
+                                if case .symbol(_) = keybind.key1 {
+                                    let image: NSImage = {
+                                        let ratio = $0.size.height / $0.size.width
+                                        $0.size.height = 11
+                                        $0.size.width = 13 / ratio
+                                        return $0
+                                    } (NSImage(resource: .superKeyLight))
+
+                                    Image(nsImage: image)
                                         .fontWeight(.medium)
                                         .frame(width: 25, height: 25)
                                 }
                                 
-                                if case let .symbol(sym) = keybind.key2 {
-                                    Image(systemName: sym)
-                                        .fontWeight(.medium)
-                                        .frame(width: 25, height: 25)
-                                }
-                                
-                                if case let .letter(letter) = keybind.key3 {
+                                if case let .letter(letter) = keybind.key2 {
                                     Text(letter)
-                                        .frame(width: 25, height: 25)
-                                } else if case let .symbol(sym) = keybind.key3 {
-                                    Image(systemName: sym)
-                                        .fontWeight(.medium)
                                         .frame(width: 25, height: 25)
                                 }
                             } else {

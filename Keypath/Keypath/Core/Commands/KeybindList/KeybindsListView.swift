@@ -46,8 +46,15 @@ struct KeybindsListView: View {
                                         Spacer()
                                         
                                         HStack(spacing: 5.0) {
-                                            if case let .symbol(sym) = item.keybind.key1 {
-                                                Image(systemName: sym)
+                                            if case .symbol(_) = item.keybind.key1 {
+                                                let image: NSImage = {
+                                                    let ratio = $0.size.height / $0.size.width
+                                                    $0.size.height = 11
+                                                    $0.size.width = 13 / ratio
+                                                    return $0
+                                                } (NSImage(resource: .superKeyLight))
+                                                
+                                                Image(nsImage: image)
                                                     .frame(width: 20, height: 20)
                                                     .background(
                                                         RoundedRectangle(cornerRadius: 5.0)
@@ -55,24 +62,8 @@ struct KeybindsListView: View {
                                                     )
                                             }
                                             
-                                            if case let .symbol(sym) = item.keybind.key2 {
-                                                Image(systemName: sym)
-                                                    .frame(width: 20, height: 20)
-                                                    .background(
-                                                        RoundedRectangle(cornerRadius: 5.0)
-                                                            .fill(.gray.opacity(0.4))
-                                                    )
-                                            }
-                                            
-                                            if case let .letter(letter) = item.keybind.key3 {
+                                            if case let .letter(letter) = item.keybind.key2 {
                                                 Text(letter)
-                                                    .frame(width: 20, height: 20)
-                                                    .background(
-                                                        RoundedRectangle(cornerRadius: 5.0)
-                                                            .fill(.gray.opacity(0.4))
-                                                    )
-                                            } else if case let .symbol(sym) = item.keybind.key3 {
-                                                Image(systemName: sym)
                                                     .frame(width: 20, height: 20)
                                                     .background(
                                                         RoundedRectangle(cornerRadius: 5.0)

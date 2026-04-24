@@ -34,16 +34,15 @@ struct BottomBarView: View {
                 Text("Commands")
                 
                 HStack(spacing: 5.0) {
-                    Image(systemName: "control")
-                        .fontWeight(.medium)
-                        .frame(width: 25, height: 25)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5.0)
-                                .fill(.quaternary)
-                                .frame(width: 23, height: 23)
-                        )
                     
-                    Image(systemName: "option")
+                    let image: NSImage = {
+                        let ratio = $0.size.height / $0.size.width
+                        $0.size.height = 10
+                        $0.size.width = 12 / ratio
+                        return $0
+                    } (NSImage(resource: .superKeyLight))
+                    
+                    Image(nsImage: image)
                         .fontWeight(.medium)
                         .frame(width: 25, height: 25)
                         .background(
@@ -53,7 +52,6 @@ struct BottomBarView: View {
                         )
                     
                     Text("C")
-                        .fontWeight(.medium)
                         .frame(width: 25, height: 25)
                         .background(
                             RoundedRectangle(cornerRadius: 5.0)

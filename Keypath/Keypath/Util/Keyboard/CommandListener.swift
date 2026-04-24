@@ -214,7 +214,7 @@ final class CommandListener {
                         
                         // 2. Scan the currentPaths array for a match
                         if let matchedPath = self.commandManager.currentPaths.first(where: { path in
-                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
+                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key2 {
                                 return existingChar == pressedString
                             }
                             return false
@@ -266,7 +266,7 @@ final class CommandListener {
                         let context = DataManager.shared.context
                         
                         if let duplicateIndex = self.commandManager.currentPaths.firstIndex(where: { path in
-                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key3 {
+                            if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key2 {
                                 return existingChar == keyString
                             }
                             return false
@@ -283,9 +283,8 @@ final class CommandListener {
                         }
                         
                         let newBind = Keybind(
-                            key1: .symbol("control"),
-                            key2: .symbol("option"),
-                            key3: .letter(keyString)
+                            key1: .symbol(".superKeyLight"),
+                            key2: .letter(keyString)
                         )
                         
                         self.commandManager.currentPaths[activeIndex].keybind = newBind

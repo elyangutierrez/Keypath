@@ -21,10 +21,10 @@ class SavedKeybind: Comparable {
     
     // go by the last key number or letter
     static func < (lhs: SavedKeybind, rhs: SavedKeybind) -> Bool {
-        let leftKey3 = lhs.keybind.key3
-        let rightKey3 = rhs.keybind.key3
+        let leftKey2 = lhs.keybind.key2
+        let rightKey2 = rhs.keybind.key2
         
-        if case let .letter(leftString) = leftKey3, case let .letter(rightString) = rightKey3 {
+        if case let .letter(leftString) = leftKey2, case let .letter(rightString) = rightKey2 {
             return leftString < rightString
         }
         

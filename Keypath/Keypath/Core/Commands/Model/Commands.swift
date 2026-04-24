@@ -10,25 +10,25 @@ import Foundation
 struct Commands {
     var cmds: [KeypathCommand] = [
         KeypathCommand(icon: "macwindow", name: "Toggle Keypath", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .letter("K")
+            key1: .symbol(".superKeyLight"), key2: .letter("K")
         )),
         KeypathCommand(icon: "text.and.command.macwindow", name: "Toggle Commands", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .letter("C")
+            key1: .symbol(".superKeyLight"), key2: .letter("C")
         )),
         KeypathCommand(icon: "macwindow.and.pointer.arrow", name: "Toggle Selection Mode", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .letter("S")
+            key1: .symbol(".superKeyLight"), key2: .letter("S")
         )),
         KeypathCommand(icon: "arrow.right", name: "Shift Selection To The Right", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .symbol("chevron.backward")
+            key1: .symbol(".superKeyLight"), key2: .symbol("chevron.backward")
         )),
         KeypathCommand(icon: "arrow.left", name: "Shift Selection To The Left", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .symbol("chevron.forward")
+            key1: .symbol(".superKeyLight"), key2: .symbol("chevron.forward")
         )),
         KeypathCommand(icon: "command", name: "Assign Path Keybind", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .letter("U")
+            key1: .symbol(".superKeyLight"), key2: .letter("U")
         )),
         KeypathCommand(icon: "command", name: "Show All Keybinds", keybind: Keybind(
-            key1: .symbol("control"), key2: .symbol("option"), key3: .letter("/")
+            key1: .symbol(".superKeyLight"), key2: .letter("/")
         ))
     ]
 }
