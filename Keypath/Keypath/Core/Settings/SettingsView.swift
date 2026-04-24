@@ -1,5 +1,5 @@
 //
-//  ExclusionListView.swift
+//  SettingsView.swift
 //  Keypath
 //
 //  Created by Elyan Gutierrez on 4/16/26.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ExclusionListView: View {
+struct SettingsView: View {
     
     @FocusState private var isFocused
     
@@ -17,6 +17,7 @@ struct ExclusionListView: View {
     @State private var isShowingExclusionList: Bool = true
     @State private var applicationList: [ListApplication] = []
     @State private var applicationNames: [String] = []
+    @State private var dataManager = DataManager.shared
     
     @State private var selectedApp: ListApplication?
     
@@ -156,6 +157,37 @@ struct ExclusionListView: View {
                         .fill(.clear)
                         .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
                 )
+                
+                VStack(spacing: 20.0) {
+                    HStack {
+                        Text("Reset Keybinds")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        Spacer()
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 20.0) {
+                        Text("Resetting your keybinds will remove all custom keybinds you have set up. This cannot be undone.")
+                        
+                        Button(role: .destructive, action: {
+                            dataManager.removeAllSavedKeybinds()
+                        }) {
+                            Text("Reset")
+                                .frame(height: 25)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 5)
+                        .padding(.horizontal, 10)
+                        .glassEffect(.clear.tint(.red), in: .rect(cornerRadius: 10.0))
+                    }
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 15.0)
+                        .fill(.clear)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
+                )
             }
             .padding(.horizontal, 30)
             .frame(maxWidth: .infinity, minHeight: 410, maxHeight: 410, alignment: .top)
@@ -207,6 +239,6 @@ struct ExclusionListView: View {
 }
 
 #Preview {
-    ExclusionListView()
+    SettingsView()
         .frame(maxWidth: .infinity, minHeight: 410, maxHeight: 410)
 }

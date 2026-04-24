@@ -38,4 +38,8 @@ class DataManager {
         
         return results ?? []
     }
+    
+    func removeAllSavedKeybinds() {
+        try? context.container.erase()
+    }
 }

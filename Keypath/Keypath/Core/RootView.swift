@@ -57,7 +57,7 @@ struct RootView: View {
             VStack(spacing: 0.0) {
                 switch navigationManager.route {
                 case .settings:
-                    ExclusionListView()
+                    SettingsView()
                 case .paths:
                     PathsView(paths: commandManager.currentPaths)
                 }
