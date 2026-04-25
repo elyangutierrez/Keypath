@@ -32,19 +32,18 @@ struct PathView: View {
                     Spacer()
                     
                     VStack {
-                        HStack(spacing: -7.0) {
+                        HStack(spacing: -5.0) {
                             if let keybind = path.keybind {
                                 if case .symbol(_) = keybind.key1 {
-                                    let image: NSImage = {
-                                        let ratio = $0.size.height / $0.size.width
-                                        $0.size.height = 11
-                                        $0.size.width = 13 / ratio
-                                        return $0
-                                    } (NSImage(resource: .superKeyLight))
-
-                                    Image(nsImage: image)
-                                        .fontWeight(.medium)
+                                    Rectangle()
+                                        .fill(.clear)
                                         .frame(width: 25, height: 25)
+                                        .overlay {
+                                            Image(.hyperKey)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 15, height: 15)
+                                        }
                                 }
                                 
                                 if case let .letter(letter) = keybind.key2 {
