@@ -116,7 +116,7 @@ struct SettingsView: View {
                                 }
                             }
                             .scrollIndicators(.never)
-                            .frame(maxWidth: .infinity, maxHeight: 150, alignment: .leading)
+                            .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 150, alignment: .leading)
                             .safeAreaPadding()
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
