@@ -35,17 +35,11 @@ struct BottomBarView: View {
                 
                 HStack(spacing: 5.0) {
                     
-                    let image: NSImage = {
-                        let ratio = $0.size.height / $0.size.width
-                        $0.size.height = 10
-                        $0.size.width = 12 / ratio
-                        return $0
-                    } (NSImage(resource: .superKeyLight))
-                    
-                    Image(nsImage: image)
-                        .fontWeight(.medium)
-                        .frame(width: 25, height: 25)
-                        .background(
+                    Image(.hyperKey)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 25, height: 15)
+                        .background (
                             RoundedRectangle(cornerRadius: 5.0)
                                 .fill(.quaternary)
                                 .frame(width: 23, height: 23)

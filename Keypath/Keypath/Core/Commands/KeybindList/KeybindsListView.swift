@@ -47,18 +47,14 @@ struct KeybindsListView: View {
                                         
                                         HStack(spacing: 5.0) {
                                             if case .symbol(_) = item.keybind.key1 {
-                                                let image: NSImage = {
-                                                    let ratio = $0.size.height / $0.size.width
-                                                    $0.size.height = 11
-                                                    $0.size.width = 13 / ratio
-                                                    return $0
-                                                } (NSImage(resource: .superKeyLight))
-                                                
-                                                Image(nsImage: image)
-                                                    .frame(width: 20, height: 20)
-                                                    .background(
+                                                Image(.hyperKey)
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 16, height: 16)
+                                                    .background (
                                                         RoundedRectangle(cornerRadius: 5.0)
                                                             .fill(.gray.opacity(0.4))
+                                                            .frame(width: 20, height: 20)
                                                     )
                                             }
                                             
