@@ -11,7 +11,7 @@ import SwiftUI
 struct PathsView: View {
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
-    @State private var scrollID: Int? = 0
+    @State private var scrollID: pid_t? = nil
     
     let columns: [GridItem] = [
         GridItem(.fixed(300)),
@@ -25,12 +25,12 @@ struct PathsView: View {
             if !paths.isEmpty {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 15.0) {
-                        ForEach(Array(paths.enumerated()), id: \.element) { index, path in
+                        ForEach(Array(paths.enumerated()), id: \.element.id) { index, path in
                             PathView(
                                 path: path,
                                 isSelected: getSelection(index)
                             )
-                            .id(index)
+                            .id(path.id)
                             .onHover { hovering in
                                 if hovering && commandManager.isInSelectionMode {
                                     withAnimation(.spring(duration: 0.3)) {
@@ -49,7 +49,9 @@ struct PathsView: View {
                 .scrollTargetBehavior(.viewAligned)
                 .onChange(of: commandManager.currentIndex) { _, newIndex in
                     withAnimation(.spring(response: 0.3)) {
-                        scrollID = newIndex
+                        if newIndex >= 0 && newIndex < paths.count {
+                            scrollID = paths[newIndex].id
+                        }
                     }
                 }
                 .overlay {

@@ -15,10 +15,13 @@ func _AXUIElementGetWindow(_ element: AXUIElement, _ idOut: UnsafeMutablePointer
 
 @Observable
 class Keypath: Identifiable, Hashable, Comparable {
-    var id = UUID()
     var application: NSRunningApplication
     var keybind: Keybind?
     var isWindowOpened: Bool = false
+    
+    var id: pid_t {
+        return application.processIdentifier
+    }
     
     var appName: String {
         return application.localizedName ?? "Unknown App"
