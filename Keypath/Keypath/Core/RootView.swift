@@ -16,6 +16,9 @@ struct RootView: View {
     @State private var navigationManager = NavigationManager.shared
     
     var paths: [Keypath] {
+        
+        print("Getting paths...")
+        
         let currentPaths = ApplicationManager.getPaths()
         
         for path in currentPaths {
@@ -77,6 +80,12 @@ struct RootView: View {
             commandManager.setPaths(paths)
         }
         .onReceive(NotificationCenter.default.publisher(for: .excludedAppsDidChange)) { _ in
+            commandManager.setPaths(paths)
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { _ in
+            commandManager.setPaths(paths)
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in
             commandManager.setPaths(paths)
         }
     }
