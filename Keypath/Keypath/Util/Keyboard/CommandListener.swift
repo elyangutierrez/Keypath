@@ -168,31 +168,6 @@ final class CommandListener {
                     return nil
                 }
                 
-                if commandManager.isInSelectionMode && keyCode == keymaps.reversed["leftarrow"]
-                {
-                    // shift selection by one to left via index
-                    Task { @MainActor in
-                        withAnimation(.spring(duration: 0.3)) {
-                            self.commandManager.shiftSelectionToLeft()
-                        }
-                    }
-                    return nil
-                }
-                
-                if commandManager.isInSelectionMode &&
-                    keyCode == keymaps.reversed["rightarrow"]
-                {
-                    // shift selection by one to right via index
-                    Task { @MainActor in
-                        withAnimation(.spring(duration: 0.3)) {
-                            self.commandManager.shiftSelectionToRight()
-                        }
-                    }
-                    
-                    isKeypathPrimed = false
-                    return nil
-                }
-                
                 if keyCode == keymaps.reversed["u"] {
                     Task { @MainActor in
                         withAnimation(.spring(duration: 0.3)) {
@@ -238,6 +213,30 @@ final class CommandListener {
                     isKeypathPrimed = false
                     return nil
                 }
+            }
+            
+            if commandManager.isInSelectionMode && keyCode == keymaps.reversed["leftarrow"]
+            {
+                // shift selection by one to left via index
+                Task { @MainActor in
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.shiftSelectionToLeft()
+                    }
+                }
+                return nil
+            }
+            
+            if commandManager.isInSelectionMode &&
+                keyCode == keymaps.reversed["rightarrow"]
+            {
+                // shift selection by one to right via index
+                Task { @MainActor in
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.commandManager.shiftSelectionToRight()
+                    }
+                }
+                
+                return nil
             }
             
             if commandManager.isInKeybindUpdateMode {
