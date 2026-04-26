@@ -221,6 +221,9 @@ struct SettingsView: View {
     }
     
     func addApp() {
+        
+        guard selectedApp != nil else { return }
+        
         let trimmed = newAppPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         Config.shared.addExcludedApp(trimmed)

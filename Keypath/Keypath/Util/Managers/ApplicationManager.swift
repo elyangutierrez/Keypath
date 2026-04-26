@@ -13,20 +13,31 @@ final class ApplicationManager {
     let workspace = NSWorkspace.shared
     
     func getApplications() -> [ListApplication] {
-        let applicationsURL = URL(fileURLWithPath: "/Applications")
+        let userApplicationsURL = URL(filePath: "/Applications")
+        let systemApplicationsURL = URL(filePath: "/System/Applications")
         let fileManager = FileManager.default
         var holder: [ListApplication] = []
+        let urls: [URL] = [userApplicationsURL, systemApplicationsURL]
         
         do {
-            let appURLs = try fileManager.contentsOfDirectory(at: applicationsURL, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
-            
-            for appURL in appURLs {
-                if let bundle = Bundle(url: appURL), let bundleId = bundle.bundleIdentifier {
-                    holder.append(ListApplication(location: appURL, bundleId: bundleId))
+            for url in urls {
+                let appURLs = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+                
+                for appURL in appURLs {
+                    if let bundle = Bundle(url: appURL), let bundleId = bundle.bundleIdentifier {
+                        holder.append(ListApplication(location: appURL, bundleId: bundleId))
+                    }
                 }
             }
+//            let appURLs = try fileManager.contentsOfDirectory(at: applicationsURL, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+//            
+//            for appURL in appURLs {
+//                if let bundle = Bundle(url: appURL), let bundleId = bundle.bundleIdentifier {
+//                    holder.append(ListApplication(location: appURL, bundleId: bundleId))
+//                }
+//            }
             
-            return holder
+            return holder.sorted()
         } catch {
             print("ERROR: \(error)")
         }
