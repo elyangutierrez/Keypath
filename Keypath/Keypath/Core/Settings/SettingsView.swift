@@ -192,6 +192,8 @@ struct SettingsView: View {
             .padding(.horizontal, 30)
             .frame(maxWidth: .infinity, minHeight: 410, maxHeight: 410, alignment: .top)
         }
+        .scrollIndicators(.hidden)
+        .contentMargins(.bottom, EdgeInsets(top: 0.0, leading: 0.0, bottom: 30.0, trailing: 0.0), for: .scrollContent)
         .onAppear {
             fetchApplications()
         }
