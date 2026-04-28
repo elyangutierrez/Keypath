@@ -21,7 +21,7 @@ final class KeypathCommandManager {
     var currentNumberOfApps: Int = 0
     var currentPaths: [Keypath] = []
     
-    private init() {}
+    init() {}
     
     func setPaths(_ paths: [Keypath]) {
         currentPaths = paths
