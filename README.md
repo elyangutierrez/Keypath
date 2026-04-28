@@ -33,12 +33,12 @@ In order to simplify key detection, the hyper key consists of double tapping con
 
 #### Opening/Closing
 
-` ⌃ K `
+` ⌃⌃ K `
 
 #### Commands
 
-` ⌃ C `
+` ⌃⌃ C `
 
 #### Keybinds
 
-` ⌃ / `
+` ⌃⌃ / `
