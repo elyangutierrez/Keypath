@@ -15,10 +15,10 @@ class DataManager {
     let container: ModelContainer
     let context: ModelContext
     
-    private init() {
+    init(isStoredInMemoryOnly: Bool = false) {
         do {
-            // Initialize the SwiftData container for your SavedKeybind model
-            container = try ModelContainer(for: SavedKeybind.self)
+            let config = ModelConfiguration(isStoredInMemoryOnly: isStoredInMemoryOnly)
+            container = try ModelContainer(for: SavedKeybind.self, configurations: config)
             context = ModelContext(container)
         } catch {
             fatalError("Failed to initialize SwiftData container: \(error.localizedDescription)")
@@ -40,6 +40,11 @@ class DataManager {
     }
     
     func removeAllSavedKeybinds() {
-        try? context.container.erase()
+        do {
+            try context.delete(model: SavedKeybind.self)
+            try context.save()
+        } catch {
+            print("Failed to remove all saved keybinds: \(error)")
+        }
     }
 }
