@@ -108,6 +108,8 @@ final class CommandListener {
                 // 2. Keybinds List ( / )
                 if keyCode == keymaps.reversed["/"] || keyCode == 44 {
                     
+                    guard !commandManager.isShowingCommands else { return nil }
+                    
                     Task { @MainActor in
                         withAnimation(.spring(duration: 0.3)) {
                             self.commandManager.isShowingKeybinds.toggle()
@@ -143,6 +145,9 @@ final class CommandListener {
                 }
                 
                 if keyCode == keymaps.reversed["c"] && isListeningForPath {
+                    
+                    guard !commandManager.isShowingKeybinds else { return nil }
+                    
                     Task { @MainActor in
                         withAnimation(.spring(duration: 0.3)) {
                             self.commandManager.isShowingCommands.toggle()
