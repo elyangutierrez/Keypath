@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import ApplicationServices
 import CoreGraphics
 import Foundation
 import Observation
@@ -29,6 +30,15 @@ final class CommandListener {
     var navigationManager = NavigationManager.shared
 
     func start() {
+        // Request Accessibility permissions if not already granted
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        let isTrusted = AXIsProcessTrustedWithOptions(options)
+        
+        guard isTrusted else {
+            print("Accessibility permissions not granted. Prompting user.")
+            return
+        }
+
         // We want to listen for modifier key changes (Ctrl/Option) and normal key downs
         let eventMask = (1 << CGEventType.flagsChanged.rawValue) | (1 << CGEventType.keyDown.rawValue)
         
