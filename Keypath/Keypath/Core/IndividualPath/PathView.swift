@@ -123,14 +123,15 @@ struct PathView: View {
                 }
             }
         }
-        .task {
+        .task(id: path.id) {
+            print("Running screenshot loop for \(path.appName)!")
             await runScreenshotLoop()
         }
     }
     
     func runScreenshotLoop() async {
-        do {
-            while !Task.isCancelled {
+        while !Task.isCancelled {
+            do {
                 let image = try await screenshotManager
                     .getApplicationImage(app: path.application)
                 
@@ -139,15 +140,19 @@ struct PathView: View {
                         self.screenshotImage = image
                     }
                 }
-                
-                try await Task.sleep(nanoseconds: 5_000_000_000)
+            } catch is CancellationError {
+                break
+            } catch let error as ScreenshotError {
+                print("[\(error.title)] \(error.localizedDescription)")
+            } catch {
+                print("Error: \(error)")
             }
-        } catch is CancellationError {
-            // Clean exit — no logging needed
-        } catch let error as ScreenshotError {
-            print("[\(error.title)] \(error.localizedDescription)")
-        } catch {
-            print("Error: \(error)")
+            
+            do {
+                try await Task.sleep(nanoseconds: 5_000_000_000)
+            } catch {
+                break
+            }
         }
     }
 }
