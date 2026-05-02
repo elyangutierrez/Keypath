@@ -9,10 +9,9 @@ import SwiftUI
 
 struct PathView: View {
     
+    @State private var previewManager = PreviewManager.shared
     @State private var screenshotManager = ScreenshotManager()
     @State private var commandManager = KeypathCommandManager.shared
-    
-    @State private var screenshotImage: CGImage?
     
     @Bindable var path: Keypath
     var isSelected: Bool
@@ -69,13 +68,17 @@ struct PathView: View {
             
             VStack {
                 VStack {
-                    if let image = screenshotImage {
+                    if let image = previewManager.previews[path.id]?.screenshotImage {
                         Image(decorative: image, scale: 1, orientation: .up)
                             .resizable()
                             .clipShape(.rect(cornerRadius: 15.0))
-                            .opacity(path.application.isHidden ? 0.5 : 1.0)
+                    } else if let cachedImage = previewManager.previews[path.id]?.cachedImage {
+                        Image(decorative: cachedImage, scale: 1, orientation: .up)
+                            .resizable()
+                            .clipShape(.rect(cornerRadius: 15.0))
+                            .opacity(0.7)
                             .overlay {
-                                if path.application.isHidden {
+                                if !path.isWindowOpened {
                                     Image(systemName: "eye.slash")
                                         .resizable()
                                         .frame(width: 35, height: 30)
@@ -124,28 +127,35 @@ struct PathView: View {
             }
         }
         .task(id: path.id) {
-            print("Running screenshot loop for \(path.appName)!")
+            previewManager.registerPath(processID: path.id)
             await runScreenshotLoop()
         }
     }
     
     func runScreenshotLoop() async {
         while !Task.isCancelled {
+            let isVisible = path.hasVisibleWindow
+            await MainActor.run {
+                path.isWindowOpened = isVisible
+            }
+
             do {
                 let image = try await screenshotManager
                     .getApplicationImage(app: path.application)
                 
                 if let image {
                     await MainActor.run {
-                        self.screenshotImage = image
+                        previewManager.addPreview(image, image, path.id)
                     }
                 }
             } catch is CancellationError {
                 break
-            } catch let error as ScreenshotError {
-                print("[\(error.title)] \(error.localizedDescription)")
             } catch {
-                print("Error: \(error)")
+                await MainActor.run {
+                    previewManager.resetPreview(processID: path.id)
+                    
+                    print(previewManager.previews[path.id]?.screenshotImage ?? "no image" + "for path: \(path.appName)")
+                }
             }
             
             do {

@@ -9,10 +9,6 @@ import AppKit
 import ApplicationServices
 import Foundation
 
-// 1. Declare the Private Apple C-Function to bridge Accessibility and CoreGraphics
-@_silgen_name("_AXUIElementGetWindow")
-func _AXUIElementGetWindow(_ element: AXUIElement, _ idOut: UnsafeMutablePointer<CGWindowID>) -> AXError
-
 @Observable
 class Keypath: Identifiable, Hashable, Comparable {
     var application: NSRunningApplication
@@ -34,41 +30,31 @@ class Keypath: Identifiable, Hashable, Comparable {
         let appElement = AXUIElementCreateApplication(pid)
         var windowsValue: CFTypeRef?
         
-        var knownMinimizedIDs = Set<CGWindowID>()
-        var hasUnminimizedWindowOnCurrentSpace = false
-        
-        // --- STEP 1: Accessibility Check (Current Space & Minimized) ---
-        let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsValue)
-        
-        if result == .success, let windows = windowsValue as? [AXUIElement] {
-            for window in windows {
-                var isMinimized = false
-                var minimizedValue: CFTypeRef?
-                
-                if AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedValue) == .success,
-                   let min = minimizedValue as? Bool {
-                    isMinimized = min
-                }
-                
-                if !isMinimized {
-                    // We found an active window right here on the current desktop!
-                    hasUnminimizedWindowOnCurrentSpace = true
-                } else {
-                    // It is minimized! Use the Private API to get its exact hardware Window ID
-                    var cgWindowID: CGWindowID = 0
-                    if _AXUIElementGetWindow(window, &cgWindowID) == .success {
-                        knownMinimizedIDs.insert(cgWindowID)
+        // 1. Accessibility API Check (Reliable for finding minimized status on current space)
+        if AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsValue) == .success,
+           let windows = windowsValue as? [AXUIElement] {
+            
+            if !windows.isEmpty {
+                for window in windows {
+                    var minimizedValue: CFTypeRef?
+                    let result = AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedValue)
+                    
+                    if result == .success, let isMinimized = minimizedValue as? Bool {
+                        if !isMinimized {
+                            return true // Found a non-minimized window
+                        }
+                    } else {
+                        // Could not verify minimized state, assume visible if it's an accessible window
+                        return true
                     }
                 }
+                
+                // If we get here, all accessible windows were minimized
+                return false
             }
         }
         
-        // Quick exit if it's open on the current desktop
-        if hasUnminimizedWindowOnCurrentSpace {
-            return true
-        }
-        
-        // --- STEP 2: Other Spaces Check via CGWindowList ---
+        // 2. CoreGraphics Fallback (Useful if windows are on another space or Accessibility fails)
         let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return false
@@ -77,30 +63,20 @@ class Keypath: Identifiable, Hashable, Comparable {
         for window in windowList {
             guard let windowPID = window[kCGWindowOwnerPID as String] as? pid_t, windowPID == pid else { continue }
             guard let layer = window[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
+            
+            // Ignore fully transparent windows
             if let alpha = window[kCGWindowAlpha as String] as? NSNumber, alpha.doubleValue <= 0.0 { continue }
             
+            // Ignore windows that are too small (tooltips, invisible proxies, etc)
             if let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
-               let heightNum = boundsDict["Height"] as? NSNumber,
-               let widthNum = boundsDict["Width"] as? NSNumber {
-                if heightNum.intValue <= 50 || widthNum.intValue <= 50 {
+               let height = boundsDict["Height"] as? NSNumber,
+               let width = boundsDict["Width"] as? NSNumber {
+                if height.intValue <= 50 || width.intValue <= 50 {
                     continue
                 }
             }
             
-            // Get the ID of this CoreGraphics window
-            guard let windowID = window[kCGWindowNumber as String] as? CGWindowID else { continue }
-            
-            // --- STEP 3: The Private API Filter ---
-            // If this window ID perfectly matches the one we extracted from the Dock, ignore it!
-            if knownMinimizedIDs.contains(windowID) {
-                continue
-            }
-            
-            if window[kCGWindowName as String] == nil {
-                continue // It's a shadow window, kill it!
-            }
-            
-            // If it survives all of this, it is 100% a real, active window on another desktop!
+            // If a valid normal window is found, assume the app has a visible window somewhere
             return true
         }
         
