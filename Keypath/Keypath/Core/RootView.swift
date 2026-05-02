@@ -88,6 +88,12 @@ struct RootView: View {
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in
             commandManager.setPaths(paths)
         }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didHideApplicationNotification)) { _ in
+            commandManager.setPaths(paths)
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didUnhideApplicationNotification)) { _ in
+            commandManager.setPaths(paths)
+        }
     }
     
     func getSelection(_ pathIndex: Int) -> Bool {

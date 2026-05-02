@@ -93,6 +93,14 @@ struct PathView: View {
                         .fill(.clear)
                         .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
                 )
+//                .opacity(path.isWindowOpened ? 1.0 : 0.5)
+//                .overlay {
+//                    if !path.isWindowOpened {
+//                        Image(systemName: "eye.slash")
+//                            .resizable()
+//                            .frame(width: 35, height: 30)
+//                    }
+//                }
             }
         }
         .padding(10)
@@ -124,13 +132,21 @@ struct PathView: View {
             }
         }
         .task(id: path.id) {
-            print("Running screenshot loop for \(path.appName)!")
+//            print("Running screenshot loop for \(path.appName)!")
             await runScreenshotLoop()
+        }
+        .onChange(of: path.isWindowOpened) {
+            print("Window state for \(path.appName) changed to \(path.isWindowOpened)")
         }
     }
     
     func runScreenshotLoop() async {
         while !Task.isCancelled {
+            let isVisible = path.hasVisibleWindow
+            await MainActor.run {
+                path.isWindowOpened = isVisible
+            }
+
             do {
                 let image = try await screenshotManager
                     .getApplicationImage(app: path.application)
@@ -142,10 +158,10 @@ struct PathView: View {
                 }
             } catch is CancellationError {
                 break
-            } catch let error as ScreenshotError {
-                print("[\(error.title)] \(error.localizedDescription)")
             } catch {
-                print("Error: \(error)")
+                await MainActor.run {
+                    self.screenshotImage = nil
+                }
             }
             
             do {
