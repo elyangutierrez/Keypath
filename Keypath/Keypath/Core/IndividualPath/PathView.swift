@@ -9,10 +9,9 @@ import SwiftUI
 
 struct PathView: View {
     
+    @State private var previewManager = PreviewManager.shared
     @State private var screenshotManager = ScreenshotManager()
     @State private var commandManager = KeypathCommandManager.shared
-    
-    @State private var screenshotImage: CGImage?
     
     @Bindable var path: Keypath
     var isSelected: Bool
@@ -69,13 +68,17 @@ struct PathView: View {
             
             VStack {
                 VStack {
-                    if let image = screenshotImage {
+                    if let image = previewManager.previews[path.id]?.screenshotImage {
                         Image(decorative: image, scale: 1, orientation: .up)
                             .resizable()
                             .clipShape(.rect(cornerRadius: 15.0))
-                            .opacity(path.application.isHidden ? 0.5 : 1.0)
+                    } else if let cachedImage = previewManager.previews[path.id]?.cachedImage {
+                        Image(decorative: cachedImage, scale: 1, orientation: .up)
+                            .resizable()
+                            .clipShape(.rect(cornerRadius: 15.0))
+                            .opacity(0.7)
                             .overlay {
-                                if path.application.isHidden {
+                                if !path.isWindowOpened {
                                     Image(systemName: "eye.slash")
                                         .resizable()
                                         .frame(width: 35, height: 30)
@@ -93,14 +96,6 @@ struct PathView: View {
                         .fill(.clear)
                         .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
                 )
-//                .opacity(path.isWindowOpened ? 1.0 : 0.5)
-//                .overlay {
-//                    if !path.isWindowOpened {
-//                        Image(systemName: "eye.slash")
-//                            .resizable()
-//                            .frame(width: 35, height: 30)
-//                    }
-//                }
             }
         }
         .padding(10)
@@ -132,11 +127,8 @@ struct PathView: View {
             }
         }
         .task(id: path.id) {
-//            print("Running screenshot loop for \(path.appName)!")
+            previewManager.registerPath(processID: path.id)
             await runScreenshotLoop()
-        }
-        .onChange(of: path.isWindowOpened) {
-            print("Window state for \(path.appName) changed to \(path.isWindowOpened)")
         }
     }
     
@@ -153,14 +145,16 @@ struct PathView: View {
                 
                 if let image {
                     await MainActor.run {
-                        self.screenshotImage = image
+                        previewManager.addPreview(image, image, path.id)
                     }
                 }
             } catch is CancellationError {
                 break
             } catch {
                 await MainActor.run {
-                    self.screenshotImage = nil
+                    previewManager.resetPreview(processID: path.id)
+                    
+                    print(previewManager.previews[path.id]?.screenshotImage ?? "no image" + "for path: \(path.appName)")
                 }
             }
             
