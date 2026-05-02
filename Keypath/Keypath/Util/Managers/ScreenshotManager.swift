@@ -13,7 +13,7 @@ final class ScreenshotManager {
     func getApplicationImage(app: NSRunningApplication) async throws -> CGImage? {
         let avaliableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         
-        guard let appWindow = avaliableContent.windows.first(where: { $0.owningApplication?.bundleIdentifier == app.bundleIdentifier }) else {
+        guard let appWindow = avaliableContent.windows.first(where: { $0.owningApplication?.processID == app.processIdentifier }) else {
             throw ScreenshotError.noWindow
         }
         
