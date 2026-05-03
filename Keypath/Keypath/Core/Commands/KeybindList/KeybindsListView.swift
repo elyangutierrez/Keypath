@@ -22,6 +22,8 @@ class KeybindDisplayItem: Identifiable {
 
 struct KeybindsListView: View {
     
+    @Environment(\.colorScheme) var colorScheme
+    
     @State private var keybindDisplayItems: [KeybindDisplayItem] = []
     @State private var hoveredKeybind: SavedKeybind?
     
@@ -47,7 +49,7 @@ struct KeybindsListView: View {
                                         
                                         HStack(spacing: 5.0) {
                                             if case .symbol(_) = item.keybind.key1 {
-                                                Image(.hyperKey)
+                                                Image(colorScheme == .dark ? .lightHyperkey : .darkHyperkey)
                                                     .resizable()
                                                     .scaledToFit()
                                                     .frame(width: 16, height: 16)

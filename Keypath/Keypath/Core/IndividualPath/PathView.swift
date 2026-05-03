@@ -9,6 +9,8 @@ import SwiftUI
 
 struct PathView: View {
     
+    @Environment(\.colorScheme) var colorScheme
+    
     @State private var previewManager = PreviewManager.shared
     @State private var screenshotManager = ScreenshotManager()
     @State private var commandManager = KeypathCommandManager.shared
@@ -44,7 +46,7 @@ struct PathView: View {
                                             .fill(.clear)
                                             .frame(width: 25, height: 25)
                                             .overlay {
-                                                Image(.hyperKey)
+                                                Image(colorScheme == .dark ? .lightHyperkey : .darkHyperkey)
                                                     .resizable()
                                                     .scaledToFit()
                                                     .frame(width: 15, height: 15)
