@@ -21,7 +21,7 @@ struct BottomBarView: View {
                     .fontWeight(.medium)
                     .frame(width: 25, height: 25)
                     .background(
-                        RoundedRectangle(cornerRadius: 5.0)
+                        ConcentricRectangle(corners: .concentric(minimum: 5.0), isUniform: true)
                             .fill(.quaternary)
                             .frame(width: 23, height: 23)
                     )
@@ -40,7 +40,7 @@ struct BottomBarView: View {
                         .scaledToFit()
                         .frame(width: 25, height: 15)
                         .background (
-                            RoundedRectangle(cornerRadius: 5.0)
+                            ConcentricRectangle(corners: .concentric(minimum: 5.0), isUniform: true)
                                 .fill(.quaternary)
                                 .frame(width: 23, height: 23)
                         )
@@ -48,7 +48,7 @@ struct BottomBarView: View {
                     Text("C")
                         .frame(width: 25, height: 25)
                         .background(
-                            RoundedRectangle(cornerRadius: 5.0)
+                            ConcentricRectangle(corners: .concentric(minimum: 5.0), isUniform: true)
                                 .fill(.quaternary)
                                 .frame(width: 23, height: 23)
                         )

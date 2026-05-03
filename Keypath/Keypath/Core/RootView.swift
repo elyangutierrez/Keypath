@@ -71,6 +71,7 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
             }
         }
+        .containerShape(.rect(cornerRadius: 15.0))
         .onAppear {
             commandManager.resetIndex()
             commandManager.setPaths(paths)

@@ -36,158 +36,164 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                VStack(spacing: 20.0) {
-                    HStack {
-                        Text("Excluded Applications")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Spacer()
-                    }
+                ZStack {
                     
-                    VStack(alignment: .leading, spacing: 10) {
+                    ConcentricRectangle(corners: .concentric, isUniform: true)
+                        .fill(.clear)
+                        .glassEffect(.regular, in: .rect(corners: .concentric, isUniform: true))
+                    
+                    VStack(spacing: 20.0) {
                         HStack {
-                            TextField("Enter App Name", text: $newAppPath)
-                                .textFieldStyle(.plain)
-                                .padding(8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(.gray.opacity(0.2))
-                                )
-                                .focused($isFocused)
+                            Text("Excluded Applications")
+                                .font(.title2)
+                                .fontWeight(.bold)
                             
-                            Button(action: {
-                                withAnimation(.spring(duration: 0.3)) {
-                                    addApp()
-                                }
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.primary)
-                            }
-                            .buttonStyle(.plain)
+                            Spacer()
                         }
                         
-                        if !newAppPath.isEmpty {
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 10.0) {
-                                    ForEach(filteredAppList, id: \.id) { app in
-                                        HStack(spacing: 10.0) {
-                                            if let icon = app.icon {
-                                                Image(nsImage: icon)
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                TextField("Enter App Name", text: $newAppPath)
+                                    .textFieldStyle(.plain)
+                                    .padding(8)
+                                    .background(
+                                        ConcentricRectangle(corners: .concentric(minimum: 8.0), isUniform: true)
+                                            .fill(.gray.opacity(0.2))
+                                    )
+                                    .focused($isFocused)
+                                
+                                Button(action: {
+                                    withAnimation(.spring(duration: 0.3)) {
+                                        addApp()
+                                    }
+                                }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.primary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            if !newAppPath.isEmpty {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 10.0) {
+                                        ForEach(filteredAppList, id: \.id) { app in
+                                            HStack(spacing: 10.0) {
+                                                if let icon = app.icon {
+                                                    Image(nsImage: icon)
+                                                }
+                                                
+                                                Text(app.appName)
                                             }
-                                            
-                                            Text(app.appName)
-                                        }
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(5)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8.0)
-                                                .fill(getFillStyle(for: app))
-                                        )
-                                        .contentShape(RoundedRectangle(cornerRadius: 8.0))
-                                        .onTapGesture {
-                                            withAnimation(.spring(duration: 0.3)) {
-                                                if app.isSelected {
-                                                    app.isSelected = false
-                                                    app.fillState = .hovering
-                                                    newAppPath = ""
-                                                    selectedApp = nil
-                                                } else {
-                                                    // Reset previous selection
-                                                    selectedApp?.isSelected = false
-                                                    selectedApp?.fillState = .none
-                                                    
-                                                    // Set new selection
-                                                    app.isSelected = true
-                                                    app.fillState = .selected
-                                                    selectedApp = app
-                                                    newAppPath = app.appName
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(5)
+                                            .background(
+                                                ConcentricRectangle(corners: .concentric(minimum: 7.0), isUniform: true)
+                                                    .fill(getFillStyle(for: app))
+                                            )
+                                            .contentShape(RoundedRectangle(cornerRadius: 8.0))
+                                            .onTapGesture {
+                                                withAnimation(.spring(duration: 0.3)) {
+                                                    if app.isSelected {
+                                                        app.isSelected = false
+                                                        app.fillState = .hovering
+                                                        newAppPath = ""
+                                                        selectedApp = nil
+                                                    } else {
+                                                        // Reset previous selection
+                                                        selectedApp?.isSelected = false
+                                                        selectedApp?.fillState = .none
+                                                        
+                                                        // Set new selection
+                                                        app.isSelected = true
+                                                        app.fillState = .selected
+                                                        selectedApp = app
+                                                        newAppPath = app.appName
+                                                    }
+                                                }
+                                            }
+                                            .onHover { hovering in
+                                                guard !app.isSelected else { return }
+                                                withAnimation(.spring(duration: 0.3)) {
+                                                    app.fillState = hovering ? .hovering : .none
                                                 }
                                             }
                                         }
-                                        .onHover { hovering in
-                                            guard !app.isSelected else { return }
-                                            withAnimation(.spring(duration: 0.3)) {
-                                                app.fillState = hovering ? .hovering : .none
-                                            }
-                                        }
                                     }
                                 }
-                            }
-                            .scrollIndicators(.never)
-                            .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 150, alignment: .leading)
-                            .safeAreaPadding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(.gray.opacity(0.2))
-                            )
-                        }
-                    }
-                    
-                    VStack(spacing: 8) {
-                        if isShowingExclusionList {
-                            ForEach(excludedApps.sorted(), id: \.self) { app in
-                                HStack {
-                                    Text(app)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation(.spring(duration: 0.3)) {
-                                            removeApp(app)
-                                        }
-                                    }) {
-                                        Image(systemName: "trash.fill")
-                                            .foregroundStyle(.red)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(10)
+                                .scrollIndicators(.never)
+                                .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 150, alignment: .leading)
+                                .safeAreaPadding()
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10)
+                                    ConcentricRectangle(corners: .concentric(minimum: 8.0), isUniform: true)
                                         .fill(.gray.opacity(0.2))
                                 )
                             }
                         }
-                    }
-                }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 15.0)
-                        .fill(.clear)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
-                )
-                
-                VStack(spacing: 20.0) {
-                    HStack {
-                        Text("Reset Keybinds")
-                            .font(.title2)
-                            .fontWeight(.bold)
                         
-                        Spacer()
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 20.0) {
-                        Text("Resetting your keybinds will remove all custom keybinds you have set up. This cannot be undone.")
-                        
-                        Button(role: .destructive, action: {
-                            dataManager.removeAllSavedKeybinds()
-                        }) {
-                            Text("Reset")
-                                .frame(height: 25)
+                        VStack(spacing: 8) {
+                            if isShowingExclusionList {
+                                ForEach(excludedApps.sorted(), id: \.self) { app in
+                                    HStack {
+                                        Text(app)
+                                            .fontWeight(.medium)
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.spring(duration: 0.3)) {
+                                                removeApp(app)
+                                            }
+                                        }) {
+                                            Image(systemName: "trash.fill")
+                                                .foregroundStyle(.red)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(10)
+                                    .background(
+                                        ConcentricRectangle(corners: .concentric(minimum: 8.0), isUniform: true)
+                                            .fill(.gray.opacity(0.2))
+                                    )
+                                }
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .padding(.vertical, 5)
-                        .padding(.horizontal, 10)
-                        .glassEffect(.clear.tint(.red), in: .rect(cornerRadius: 10.0))
                     }
+                    .padding()
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 15.0)
+                .containerShape(.rect(cornerRadius: 15.0))
+                
+                ZStack {
+                    
+                    ConcentricRectangle(corners: .concentric, isUniform: true)
                         .fill(.clear)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
-                )
+                        .glassEffect(.regular, in: .rect(corners: .concentric, isUniform: true))
+                    
+                    VStack(spacing: 20.0) {
+                        HStack {
+                            Text("Reset Keybinds")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            
+                            Spacer()
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 20.0) {
+                            Text("Resetting your keybinds will remove all custom keybinds you have set up. This cannot be undone.")
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            Button(role: .destructive, action: {
+                                dataManager.removeAllSavedKeybinds()
+                            }) {
+                                Text("Reset")
+                                    .frame(height: 25)
+                            }
+                            .buttonStyle(.glassProminent)
+                            .tint(.red)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding()
+                }
+                .containerShape(.rect(cornerRadius: 15.0))
             }
             .padding(.horizontal, 30)
             .frame(maxWidth: .infinity, minHeight: 410, maxHeight: 410, alignment: .top)

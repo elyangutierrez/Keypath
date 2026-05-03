@@ -13,77 +13,75 @@ struct CommandsView: View {
     
     var body: some View {
         VStack {
-            VStack {
-                ScrollView {
-                    VStack(spacing: 15.0) {
-                        HStack {
-                            Text("Commands")
-                                .fontWeight(.medium)
-                            
-                            Spacer()
-                        }
+            ScrollView {
+                VStack(spacing: 15.0) {
+                    HStack {
+                        Text("Commands")
+                            .fontWeight(.medium)
                         
-                        VStack(spacing: 5.0) {
-                            ForEach(commands, id: \.id) { cmd in
-                                VStack {
+                        Spacer()
+                    }
+                    
+                    VStack(spacing: 5.0) {
+                        ForEach(commands, id: \.id) { cmd in
+                            VStack {
+                                HStack {
                                     HStack {
-                                        HStack {
-                                            Image(systemName: cmd.icon)
-                                            
-                                            Text(cmd.name)
+                                        Image(systemName: cmd.icon)
+                                        
+                                        Text(cmd.name)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    HStack(spacing: 5.0) {
+                                        if case .symbol(_) = cmd.keybind.key1 {
+                                            Image(.hyperKey)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 16, height: 16)
+                                                .background (
+                                                    ConcentricRectangle(corners: .concentric(minimum: 5.0))
+                                                        .fill(.gray.opacity(0.4))
+                                                        .frame(width: 20, height: 20)
+                                                )
                                         }
                                         
-                                        Spacer()
-                                        
-                                        HStack(spacing: 5.0) {
-                                            if case .symbol(_) = cmd.keybind.key1 {
-                                                Image(.hyperKey)
-                                                    .resizable()
-                                                    .scaledToFit()
-                                                    .frame(width: 16, height: 16)
-                                                    .background (
-                                                        RoundedRectangle(cornerRadius: 5.0)
-                                                            .fill(.gray.opacity(0.4))
-                                                            .frame(width: 20, height: 20)
-                                                    )
-                                            }
-                                            
-                                            if case let .letter(letter) = cmd.keybind.key2 {
-                                                Text(letter)
-                                                    .frame(width: 20, height: 20)
-                                                    .background(
-                                                        RoundedRectangle(cornerRadius: 5.0)
-                                                            .fill(.gray.opacity(0.4))
-                                                    )
-                                            } else if case let .symbol(sym) = cmd.keybind.key2 {
-                                                Image(systemName: sym)
-                                                    .frame(width: 20, height: 20)
-                                                    .background(
-                                                        RoundedRectangle(cornerRadius: 5.0)
-                                                            .fill(.gray.opacity(0.4))
-                                                    )
-                                            }
+                                        if case let .letter(letter) = cmd.keybind.key2 {
+                                            Text(letter)
+                                                .frame(width: 20, height: 20)
+                                                .background(
+                                                    ConcentricRectangle(corners: .concentric(minimum: 5.0))
+                                                        .fill(.gray.opacity(0.4))
+                                                )
+                                        } else if case let .symbol(sym) = cmd.keybind.key2 {
+                                            Image(systemName: sym)
+                                                .frame(width: 20, height: 20)
+                                                .background(
+                                                    ConcentricRectangle(corners: .concentric(minimum: 5.0))
+                                                        .fill(.gray.opacity(0.4))
+                                                )
                                         }
                                     }
                                 }
-                                .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
-                                .padding(.horizontal, 5)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10.0)
-                                        .fill(cmd.isHovered ? .gray.opacity(0.2) : .clear)
-                                )
-                                .contentShape(RoundedRectangle(cornerRadius: 10.0))
-                                .onHover { hovering in
-                                    withAnimation(.spring(duration: 0.3)) {
-                                        cmd.isHovered = hovering
-                                    }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
+                            .padding(.horizontal, 5)
+                            .background(
+                                ConcentricRectangle(corners: .concentric(minimum: 10.0))
+                                    .fill(cmd.isHovered ? .gray.opacity(0.2) : .clear)
+                            )
+                            .contentShape(.rect(cornerRadius: 10.0))
+                            .onHover { hovering in
+                                withAnimation(.spring(duration: 0.3)) {
+                                    cmd.isHovered = hovering
                                 }
                             }
                         }
                     }
                 }
-                .scrollIndicators(.never)
             }
+            .scrollIndicators(.never)
         }
         .safeAreaPadding()
     }
