@@ -52,7 +52,7 @@ struct KeybindsListView: View {
                                                     .scaledToFit()
                                                     .frame(width: 16, height: 16)
                                                     .background (
-                                                        RoundedRectangle(cornerRadius: 5.0)
+                                                        ConcentricRectangle(corners: .concentric(minimum: 5.0))
                                                             .fill(.gray.opacity(0.4))
                                                             .frame(width: 20, height: 20)
                                                     )
@@ -62,7 +62,7 @@ struct KeybindsListView: View {
                                                 Text(letter)
                                                     .frame(width: 20, height: 20)
                                                     .background(
-                                                        RoundedRectangle(cornerRadius: 5.0)
+                                                        ConcentricRectangle(corners: .concentric(minimum: 5.0))
                                                             .fill(.gray.opacity(0.4))
                                                     )
                                             }
@@ -72,10 +72,10 @@ struct KeybindsListView: View {
                                 .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
                                 .padding(.horizontal, 5)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10.0)
+                                    ConcentricRectangle(corners: .concentric(minimum: 10.0))
                                         .fill(item.isHovered ? .gray.opacity(0.2) : .clear)
                                 )
-                                .contentShape(RoundedRectangle(cornerRadius: 10.0))
+                                .contentShape(.rect(cornerRadius: 10.0))
                                 .onHover { hovering in
                                     withAnimation(.spring(duration: 0.3)) {
                                         item.isHovered = hovering

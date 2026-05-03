@@ -21,115 +21,117 @@ struct PathView: View {
     }
     
     var body: some View {
-        VStack {
-            VStack {
-                HStack {
-                    Image(nsImage: path.application.icon ?? NSImage())
-                    
-                    Text(path.application.localizedName ?? "Unknown")
-                    
-                    Spacer()
-                    
-                    VStack {
-                        HStack(spacing: -5.0) {
-                            if let keybind = path.keybind {
-                                if case .symbol(_) = keybind.key1 {
-                                    Rectangle()
-                                        .fill(.clear)
-                                        .frame(width: 25, height: 25)
-                                        .overlay {
-                                            Image(.hyperKey)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 15, height: 15)
-                                        }
-                                }
-                                
-                                if case let .letter(letter) = keybind.key2 {
-                                    Text(letter)
-                                        .frame(width: 25, height: 25)
-                                }
-                            } else {
-                                Image(systemName: "nosign")
-                                    .fontWeight(.medium)
-                                    .frame(width: 25, height: 25)
-                            }
-                        }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 5.0)
-                            .fill(.regularMaterial)
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity)
+        ZStack {
             
-            Spacer()
+            ConcentricRectangle(corners: .concentric, isUniform: true)
+                .fill(.clear)
+                .glassEffect(.regular.tint(isSelected && !isChangingKeybind ? .blue.opacity(0.6) : .clear), in: .rect(corners: .concentric, isUniform: true))
             
             VStack {
                 VStack {
-                    if let image = previewManager.previews[path.id]?.screenshotImage {
-                        Image(decorative: image, scale: 1, orientation: .up)
-                            .resizable()
-                            .clipShape(.rect(cornerRadius: 15.0))
-                    } else if let cachedImage = previewManager.previews[path.id]?.cachedImage {
-                        Image(decorative: cachedImage, scale: 1, orientation: .up)
-                            .resizable()
-                            .clipShape(.rect(cornerRadius: 15.0))
-                            .opacity(0.7)
-                            .overlay {
-                                if !path.isWindowOpened {
-                                    Image(systemName: "eye.slash")
-                                        .resizable()
-                                        .frame(width: 35, height: 30)
+                    HStack {
+                        Image(nsImage: path.application.icon ?? NSImage())
+                        
+                        Text(path.application.localizedName ?? "Unknown")
+                        
+                        Spacer()
+                        
+                        VStack {
+                            HStack(spacing: -5.0) {
+                                if let keybind = path.keybind {
+                                    if case .symbol(_) = keybind.key1 {
+                                        Rectangle()
+                                            .fill(.clear)
+                                            .frame(width: 25, height: 25)
+                                            .overlay {
+                                                Image(.hyperKey)
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 15, height: 15)
+                                            }
+                                    }
+                                    
+                                    if case let .letter(letter) = keybind.key2 {
+                                        Text(letter)
+                                            .frame(width: 25, height: 25)
+                                    }
+                                } else {
+                                    Image(systemName: "nosign")
+                                        .fontWeight(.medium)
+                                        .frame(width: 25, height: 25)
                                 }
                             }
-                    } else {
-                        Image(nsImage: path.application.icon ?? NSImage())
-                            .resizable()
-                            .frame(width: 80, height: 80)
+                        }
+                        .background(
+                            ConcentricRectangle(corners: .concentric(minimum: 5.0), isUniform: true)
+                                .fill(.regularMaterial)
+                        )
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 15.0)
-                        .fill(.clear)
-                        .glassEffect(.clear, in: .rect(cornerRadius: 15.0))
-                )
+                .frame(maxWidth: .infinity)
+                
+                Spacer()
+                
+                VStack {
+                    VStack {
+                        if let image = previewManager.previews[path.id]?.screenshotImage {
+                            Image(decorative: image, scale: 1, orientation: .up)
+                                .resizable()
+                                .clipShape(.rect(corners: .concentric))
+                        } else if let cachedImage = previewManager.previews[path.id]?.cachedImage {
+                            Image(decorative: cachedImage, scale: 1, orientation: .up)
+                                .resizable()
+                                .clipShape(.rect(corners: .concentric))
+                                .opacity(0.7)
+                                .overlay {
+                                    if !path.isWindowOpened {
+                                        Image(systemName: "eye.slash")
+                                            .resizable()
+                                            .frame(width: 35, height: 30)
+                                    }
+                                }
+                        } else {
+                            Image(nsImage: path.application.icon ?? NSImage())
+                                .resizable()
+                                .frame(width: 80, height: 80)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(
+                        ConcentricRectangle(corners: .concentric, isUniform: true)
+                            .fill(.clear)
+                            .glassEffect(.clear, in: .rect(corners: .concentric, isUniform: true))
+                    )
+                }
+            }
+            .padding(10)
+            .overlay {
+                if isChangingKeybind {
+                    ZStack {
+                        ConcentricRectangle(corners: .concentric, isUniform: true)
+                            .fill(.ultraThickMaterial)
+                            .opacity(0.9)
+                        
+                        VStack(spacing: 15.0) {
+                            Image(systemName: "keyboard")
+                                .resizable()
+                                .frame(width: 35, height: 25)
+                            
+                            Text("Enter your new keybind")
+                                .font(.headline)
+                                .fontWeight(.medium)
+                        }
+                    }
+                }
+            }
+            .task(id: path.id) {
+                previewManager.registerPath(processID: path.id)
+                await runScreenshotLoop()
             }
         }
-        .padding(10)
         .frame(width: 275)
         .frame(height: 190)
-        .background(
-            RoundedRectangle(cornerRadius: 15.0)
-                .fill(.clear)
-                .glassEffect(.regular.tint(isSelected && !isChangingKeybind ? .blue.opacity(0.6) : .clear), in: .rect(cornerRadius: 15.0))
-        )
-        .contentShape(.rect(cornerRadius: 15.0))
-        .overlay {
-            if isChangingKeybind {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15.0)
-                        .fill(.ultraThickMaterial)
-                        .opacity(0.9)
-                    
-                    VStack(spacing: 15.0) {
-                        Image(systemName: "keyboard")
-                            .resizable()
-                            .frame(width: 35, height: 25)
-                        
-                        Text("Enter your new keybind")
-                            .font(.headline)
-                            .fontWeight(.medium)
-                    }
-                }
-            }
-        }
-        .task(id: path.id) {
-            previewManager.registerPath(processID: path.id)
-            await runScreenshotLoop()
-        }
+        .containerShape(.rect(cornerRadius: 15.0))
     }
     
     func runScreenshotLoop() async {

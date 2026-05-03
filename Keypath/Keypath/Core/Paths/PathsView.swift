@@ -56,31 +56,31 @@ struct PathsView: View {
                 }
                 .overlay {
                     if commandManager.isShowingCommands {
-                        VStack {
+                        ZStack {
+                            ConcentricRectangle(corners: .concentric, isUniform: true)
+                                .fill(.clear)
+                                .glassEffect(.regular, in: .rect(corners: .concentric))
+                            
                             VStack {
                                 CommandsView()
                             }
-                            .frame(width: 315, height: 250)
-                            .background(
-                                RoundedRectangle(cornerRadius: 15.0)
-                                    .fill(.clear)
-                                    .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
-                            )
                         }
+                        .containerShape(.rect(cornerRadius: 15.0))
+                        .frame(width: 315, height: 250)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                         .padding()
                     } else if commandManager.isShowingKeybinds {
-                        VStack {
+                        ZStack {
+                            ConcentricRectangle(corners: .concentric, isUniform: true)
+                                .fill(.clear)
+                                .glassEffect(.regular, in: .rect(corners: .concentric))
+                            
                             VStack {
                                 KeybindsListView()
                             }
-                            .frame(width: 315, height: 250)
-                            .background(
-                                RoundedRectangle(cornerRadius: 15.0)
-                                    .fill(.clear)
-                                    .glassEffect(.regular, in: .rect(cornerRadius: 15.0))
-                            )
                         }
+                        .containerShape(.rect(cornerRadius: 15.0))
+                        .frame(width: 315, height: 250)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding()
                     }
