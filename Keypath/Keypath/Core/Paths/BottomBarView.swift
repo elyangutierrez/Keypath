@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct BottomBarView: View {
+    
+    @Environment(\.colorScheme) var colorScheme
+    
     @State private var navigationManager = NavigationManager.shared
     
     var body: some View {
@@ -35,7 +38,7 @@ struct BottomBarView: View {
                 
                 HStack(spacing: 5.0) {
                     
-                    Image(.hyperKey)
+                    Image(colorScheme == .dark ? .lightHyperkey : .darkHyperkey)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 25, height: 15)

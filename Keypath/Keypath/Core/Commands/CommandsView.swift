@@ -9,6 +9,8 @@ import SwiftUI
 
 struct CommandsView: View {
     
+    @Environment(\.colorScheme) var colorScheme
+    
     @State private var commands = Commands().cmds
     
     var body: some View {
@@ -36,7 +38,7 @@ struct CommandsView: View {
                                     
                                     HStack(spacing: 5.0) {
                                         if case .symbol(_) = cmd.keybind.key1 {
-                                            Image(.hyperKey)
+                                            Image(colorScheme == .dark ? .lightHyperkey : .darkHyperkey)
                                                 .resizable()
                                                 .scaledToFit()
                                                 .frame(width: 16, height: 16)
