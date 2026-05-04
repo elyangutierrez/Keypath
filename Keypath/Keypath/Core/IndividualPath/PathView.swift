@@ -77,21 +77,43 @@ struct PathView: View {
                 VStack {
                     VStack {
                         if let image = previewManager.previews[path.id]?.screenshotImage {
-                            Image(decorative: image, scale: 1, orientation: .up)
-                                .resizable()
-                                .clipShape(.rect(corners: .concentric))
+                            if image.width > image.height {
+                                Image(decorative: image, scale: 1, orientation: .up)
+                                    .resizable()
+                                    .clipShape(.rect(corners: .concentric))
+                            } else {
+                                Image(decorative: image, scale: 1, orientation: .up)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .clipShape(.rect(corners: .concentric))
+                            }
                         } else if let cachedImage = previewManager.previews[path.id]?.cachedImage {
-                            Image(decorative: cachedImage, scale: 1, orientation: .up)
-                                .resizable()
-                                .clipShape(.rect(corners: .concentric))
-                                .opacity(0.7)
-                                .overlay {
-                                    if !path.isWindowOpened {
-                                        Image(systemName: "eye.slash")
-                                            .resizable()
-                                            .frame(width: 35, height: 30)
+                            if cachedImage.width > cachedImage.height {
+                                Image(decorative: cachedImage, scale: 1, orientation: .up)
+                                    .resizable()
+                                    .clipShape(.rect(corners: .concentric))
+                                    .opacity(0.7)
+                                    .overlay {
+                                        if !path.isWindowOpened {
+                                            Image(systemName: "eye.slash")
+                                                .resizable()
+                                                .frame(width: 35, height: 30)
+                                        }
                                     }
-                                }
+                            } else {
+                                Image(decorative: cachedImage, scale: 1, orientation: .up)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .clipShape(.rect(corners: .concentric))
+                                    .opacity(0.7)
+                                    .overlay {
+                                        if !path.isWindowOpened {
+                                            Image(systemName: "eye.slash")
+                                                .resizable()
+                                                .frame(width: 35, height: 30)
+                                        }
+                                    }
+                            }
                         } else {
                             Image(nsImage: path.application.icon ?? NSImage())
                                 .resizable()
