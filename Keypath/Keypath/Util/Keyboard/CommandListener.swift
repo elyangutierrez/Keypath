@@ -134,7 +134,7 @@ final class CommandListener {
                 if keyCode == keymaps.reversed["k"] {
                     
                     if isListeningForPath {
-                        commandManager.isShowingCommands = false
+                        commandManager.resetModes()
                         isListeningForPath = false
                         Task { @MainActor in
                             withAnimation(.spring(duration: 0.3)) {
@@ -259,7 +259,7 @@ final class CommandListener {
                 if keyCode == keymaps.reversed["esc"] {
                     Task { @MainActor in
                         withAnimation(.spring(duration: 0.3)) {
-                            self.commandManager.isInKeybindUpdateMode = false
+                            self.commandManager.resetModes()
                         }
                     }
                     return nil
@@ -327,7 +327,7 @@ final class CommandListener {
             if isListeningForPath {
                 
                 if keyCode == keymaps.reversed["esc"] {
-                    commandManager.isShowingCommands = false
+                    commandManager.resetModes()
                     commandManager.resetIndex()
                     isListeningForPath = false
                     Task { @MainActor in

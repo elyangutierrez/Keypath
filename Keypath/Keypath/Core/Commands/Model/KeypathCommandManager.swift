@@ -53,4 +53,11 @@ final class KeypathCommandManager {
     func resetIndex() {
         currentIndex = 0
     }
+    
+    func resetModes() {
+        isInSelectionMode = false
+        isInKeybindUpdateMode = false
+        isShowingCommands = false
+        isShowingKeybinds = false
+    }
 }
