@@ -28,6 +28,7 @@ final class CommandListener {
     
     var commandManager = KeypathCommandManager.shared
     var navigationManager = NavigationManager.shared
+    var applicationManager = ApplicationManager()
 
     func start() {
         // Request Accessibility permissions if not already granted
@@ -202,6 +203,7 @@ final class CommandListener {
                     // We grab the string and immediately uppercase it so 'c' becomes 'C'
                     if let pressedString = self.keymaps.mappings[keyCode]?.uppercased() {
                         
+                        
                         // 2. Scan the currentPaths array for a match
                         if let matchedPath = self.commandManager.currentPaths.first(where: { path in
                             if let existingBind = path.keybind, case let .letter(existingChar) = existingBind.key2 {
@@ -222,6 +224,25 @@ final class CommandListener {
                                 self.commandManager.resetIndex()
                                 PathsWindowManager.shared.hide()
                             }
+                        } else {
+                            var hasMatched: [Bool: (String, String?)] = [:]
+                            let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
+                            
+                            let keys = existingKeybinds.map { $0.keybind.key2 }
+                            
+                            guard !keys.isEmpty else { return nil }
+                            
+                            for key in keys {
+                                if case .letter(pressedString) = key {
+                                    if let match = existingKeybinds.first(where: { $0.keybind.key2 == key }) {
+                                        hasMatched[true] = (match.appName, match.bundleID)
+                                    }
+                                }
+                            }
+                            
+                            guard let match = hasMatched[true] else { return nil }
+                            
+                            applicationManager.activateApplication(appName: match.0, bundleID: match.1)
                         }
                     }
                     
@@ -303,12 +324,14 @@ final class CommandListener {
                         
                         self.commandManager.currentPaths[activeIndex].keybind = newBind
                         let targetAppName = self.commandManager.currentPaths[activeIndex].application.localizedName ?? "App"
+                        let bundleID = self.commandManager.currentPaths[activeIndex].application.bundleIdentifier
                         
                         if let existingSave = DataManager.shared.fetchSavedKeybind(for: targetAppName) {
                             existingSave.keybind = newBind // update existing bind
+                            existingSave.bundleID = bundleID
                             //                            print("Updating existing bind!")
                         } else {
-                            let newSave = SavedKeybind(appName: targetAppName, keybind: newBind)
+                            let newSave = SavedKeybind(appName: targetAppName, bundleID: bundleID, keybind: newBind)
                             context.insert(newSave) // set new bind
                             //                            print("Setting new bind!")
                         }

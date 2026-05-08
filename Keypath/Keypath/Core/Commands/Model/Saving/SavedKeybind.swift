@@ -12,10 +12,12 @@ import SwiftData
 class SavedKeybind: Comparable {
     var id = UUID()
     var appName: String
+    var bundleID: String?
     var keybind: Keybind
     
-    init(appName: String, keybind: Keybind) {
+    init(appName: String, bundleID: String? = nil, keybind: Keybind) {
         self.appName = appName
+        self.bundleID = bundleID
         self.keybind = keybind
     }
     
