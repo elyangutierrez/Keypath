@@ -70,6 +70,7 @@ struct RootView: View {
                 .frame(width: PathsWindowManager.pathsContentSize.width,
                        height: PathsWindowManager.pathsContentSize.height)
                 .containerShape(.rect(cornerRadius: 15.0))
+                .clipShape(.rect(cornerRadius: 15.0))
             }
         }
         .onAppear {

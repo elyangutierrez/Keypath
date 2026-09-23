@@ -95,11 +95,11 @@ struct RecentAppPickerView: View {
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            ConcentricRectangle(corners: .concentric(minimum: 5), isUniform: true)
+            ConcentricRectangle(corners: .concentric(minimum: 15), isUniform: true)
                 .fill(isSelected ? .blue.opacity(0.3) : .clear)
-                .glassEffect(.regular.tint(isSelected ? .blue.opacity(0.35) : .clear), in: .rect(corners: .concentric))
+                .glassEffect(.regular.tint(isSelected ? .blue.opacity(0.35) : .clear), in: .rect(corners: .concentric(minimum: 15)))
         }
-        .contentShape(.rect(cornerRadius: 12))
+        .contentShape(.rect(corners: .concentric))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(application.localizedName ?? "Unknown App")
         .accessibilityValue(isSelected ? "Selected" : "")

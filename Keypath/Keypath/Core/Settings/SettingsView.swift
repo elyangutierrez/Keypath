@@ -272,6 +272,8 @@ struct SettingsView: View {
         .onTapGesture {
             isFocused = false
         }
+        .padding(.top)
+        .scrollClipDisabled()
     }
     
     func getFillStyle(for app: ListApplication) -> AnyShapeStyle {
