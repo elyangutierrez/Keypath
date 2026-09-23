@@ -16,7 +16,7 @@ The app is an accessory-style menu bar app (`LSUIElement = YES`), not a conventi
   - `Tab`: open the recent-app picker; inside it, `Tab` and `Shift-Tab` cycle, Return selects, and Escape cancels.
   - `C`: show or hide the command reference while the HUD is open.
   - `/`: show or hide the saved app-keybind list.
-  - `S`: enter or leave selection mode; left/right arrows move the selection.
+  - `S`: enter or leave selection mode; arrow keys move through the two-column app grid (up/down move by one row).
   - `U`: assign a keybind to the selected app; press Escape to cancel.
   - In the HUD, a configured letter activates its app. If that app is already active and its window is open, the implementation minimizes its windows; otherwise it activates the app.
 - The HUD command listener consumes only recognized Keypath shortcuts and passes unrelated keys through. Keep that invariant when changing keyboard handling.

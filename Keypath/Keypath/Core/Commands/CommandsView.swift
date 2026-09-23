@@ -31,9 +31,14 @@ struct CommandsView: View {
 
                     VStack(spacing: 5.0) {
                         ForEach(Commands.shortcuts) { shortcut in
-                            HStack {
-                                Label(shortcut.title, systemImage: shortcut.icon)
-                                    .lineLimit(1)
+                            HStack(alignment: .top, spacing: 6.0) {
+                                Image(systemName: shortcut.icon)
+                                    .imageScale(.medium)
+
+                                Text(shortcut.title)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .layoutPriority(1)
 
                                 Spacer(minLength: 8)
 
@@ -60,8 +65,9 @@ struct CommandsView: View {
                                         }
                                 }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
+                            .frame(maxWidth: .infinity, minHeight: 35, alignment: .topLeading)
                             .padding(.horizontal, 5)
+                            .padding(.vertical, 4)
                             .background {
                                 ConcentricRectangle(corners: .concentric(minimum: 10.0))
                                     .fill(hoveredShortcut == shortcut.action ? .gray.opacity(0.2) : .clear)

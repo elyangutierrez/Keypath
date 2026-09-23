@@ -93,6 +93,7 @@ final class KeybindAssignmentCoordinator {
         let target = PendingAssignment(
             appName: selectedPath?.appName ?? appName,
             bundleID: selectedPath?.application.bundleIdentifier ?? bundleID,
+            processIdentifier: selectedPath?.id,
             key: normalizedKey
         )
         pendingAssignment = target
@@ -233,6 +234,7 @@ final class KeybindAssignmentCoordinator {
                 UndoState(
                     records: records,
                     pathBindings: previousPaths,
+                    target: nil,
                     description: "Undo Reset",
                     expiresAt: Date().addingTimeInterval(30)
                 )
@@ -264,6 +266,27 @@ final class KeybindAssignmentCoordinator {
 
     func setUndoFocused(_ focused: Bool) {
         isUndoFocused = focused && undoAvailable
+    }
+
+    /// Shows assignment Undo on the app whose keybind changed, regardless of
+    /// which app is currently selected in the HUD.
+    func isUndoTarget(_ path: Keypath, among paths: [Keypath], isSelected: Bool) -> Bool {
+        guard undoAvailable else { return false }
+        guard let target = undoState?.target else {
+            // A reset affects all saved bindings, so retain its existing HUD
+            // Undo affordance on the selected card.
+            return isSelected
+        }
+
+        guard target.matches(
+            appName: path.appName,
+            bundleID: path.application.bundleIdentifier,
+            processIdentifier: path.id
+        ) else { return false }
+        if target.bundleID == nil, target.processIdentifier == nil {
+            return isUniqueRunningIdentity(named: target.appName, bundleID: nil, in: paths)
+        }
+        return true
     }
 
     func clearError() {
@@ -312,6 +335,11 @@ final class KeybindAssignmentCoordinator {
                 UndoState(
                     records: records,
                     pathBindings: previousPaths,
+                    target: KeybindUndoTarget(
+                        appName: target.appName,
+                        bundleID: target.bundleID,
+                        processIdentifier: target.processIdentifier
+                    ),
                     description: "Undo keybind for \(target.appName)",
                     expiresAt: Date().addingTimeInterval(30)
                 )
@@ -463,6 +491,7 @@ final class KeybindAssignmentCoordinator {
     private struct PendingAssignment {
         let appName: String
         let bundleID: String?
+        let processIdentifier: pid_t?
         let key: String
     }
 
@@ -489,7 +518,28 @@ final class KeybindAssignmentCoordinator {
         let token = UUID()
         let records: [SavedKeybindSnapshot]
         let pathBindings: [PathBindingState]
+        let target: KeybindUndoTarget?
         let description: String
         let expiresAt: Date
+    }
+}
+
+struct KeybindUndoTarget: Equatable {
+    let appName: String
+    let bundleID: String?
+    let processIdentifier: pid_t?
+
+    func matches(
+        appName: String,
+        bundleID candidateBundleID: String?,
+        processIdentifier candidateProcessIdentifier: pid_t?
+    ) -> Bool {
+        if let targetBundleID = bundleID {
+            return candidateBundleID == targetBundleID
+        }
+        if let targetProcessIdentifier = self.processIdentifier {
+            return candidateProcessIdentifier == targetProcessIdentifier
+        }
+        return appName == self.appName
     }
 }

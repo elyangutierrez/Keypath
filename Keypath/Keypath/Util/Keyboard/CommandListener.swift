@@ -81,6 +81,18 @@ struct KeyboardEventRouter {
         context: KeyboardRouteContext
     ) -> KeyboardRouteDecision {
         guard !context.settingsAreVisible else { return .passThrough }
+
+        // Some compact keyboards report Fn with navigation keys. During HUD
+        // selection, accept Shift/Fn arrow events before general shortcut
+        // modifier filtering, while still ignoring Command/Control/Option.
+        if context.selectionModeIsActive, !context.recentAppPickerIsVisible,
+           !context.keybindAssignmentIsActive,
+           !modifiers.command, !modifiers.control, !modifiers.option, !modifiers.capsLock {
+            if let offset = selectionOffset(for: keyCode) {
+                return .handle(.moveSelection(by: offset))
+            }
+        }
+
         guard !modifiers.hasUnsupportedModifier else { return .passThrough }
 
         let isPickerReverseCycle = context.recentAppPickerIsVisible &&
@@ -118,15 +130,6 @@ struct KeyboardEventRouter {
 
         if context.keybindAssignmentIsActive {
             return keybindAssignmentDecision(for: keyCode, context: context)
-        }
-
-        if context.selectionModeIsActive {
-            if Commands.shortcut(for: .shiftSelectionBackward).matches(keyCode: keyCode) {
-                return .handle(.moveSelection(by: -1))
-            }
-            if Commands.shortcut(for: .shiftSelectionForward).matches(keyCode: keyCode) {
-                return .handle(.moveSelection(by: 1))
-            }
         }
 
         guard context.hudIsVisible else { return .passThrough }
@@ -209,6 +212,14 @@ struct KeyboardEventRouter {
             return .passThrough
         }
         return .handle(.assignKeybind(key))
+    }
+
+    private func selectionOffset(for keyCode: Int) -> Int? {
+        if Commands.shortcut(for: .shiftSelectionBackward).matches(keyCode: keyCode) { return -1 }
+        if Commands.shortcut(for: .shiftSelectionForward).matches(keyCode: keyCode) { return 1 }
+        if Commands.shortcut(for: .shiftSelectionUp).matches(keyCode: keyCode) { return -2 }
+        if Commands.shortcut(for: .shiftSelectionDown).matches(keyCode: keyCode) { return 2 }
+        return nil
     }
 }
 
@@ -503,11 +514,7 @@ final class CommandListener {
 
         case let .moveSelection(offset):
             withAnimation(.spring(duration: 0.3)) {
-                if offset < 0 {
-                    commandManager.shiftSelectionToLeft()
-                } else {
-                    commandManager.shiftSelectionToRight()
-                }
+                commandManager.shiftSelection(by: offset)
             }
             return nil
 

@@ -130,6 +130,40 @@ struct KeybindAssignmentCoordinatorTests {
         #expect(try manager.savedKeybindSnapshots().map(\.appName) == ["Mail"])
     }
 
+    @Test func undoTargetFollowsBundleIdentityAndUsesProcessIdentityWithoutBundleID() {
+        let bundleTarget = KeybindUndoTarget(
+            appName: "Editor",
+            bundleID: "com.example.editor",
+            processIdentifier: 100
+        )
+        #expect(bundleTarget.matches(
+            appName: "Editor",
+            bundleID: "com.example.editor",
+            processIdentifier: 200
+        ))
+        #expect(!bundleTarget.matches(
+            appName: "Editor",
+            bundleID: "com.other.editor",
+            processIdentifier: 100
+        ))
+
+        let processTarget = KeybindUndoTarget(
+            appName: "Legacy App",
+            bundleID: nil,
+            processIdentifier: 321
+        )
+        #expect(processTarget.matches(
+            appName: "Renamed App",
+            bundleID: nil,
+            processIdentifier: 321
+        ))
+        #expect(!processTarget.matches(
+            appName: "Legacy App",
+            bundleID: nil,
+            processIdentifier: 654
+        ))
+    }
+
     private func dataManager(_ records: [SavedKeybindSnapshot]) throws -> DataManager {
         KeypathCommandManager.shared.currentPaths = []
         KeypathCommandManager.shared.currentIndex = 0

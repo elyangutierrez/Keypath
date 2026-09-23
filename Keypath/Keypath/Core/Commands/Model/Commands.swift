@@ -13,6 +13,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Equatable {
     case toggleSelectionMode
     case shiftSelectionBackward
     case shiftSelectionForward
+    case shiftSelectionUp
+    case shiftSelectionDown
     case assignAppKeybind
     case showAllKeybinds
     case openRecentAppPicker
@@ -71,6 +73,10 @@ enum Commands {
               keyNames: ["leftarrow"], keyLabel: "←", scope: .selectionMode, usesActivationChord: false),
         .init(action: .shiftSelectionForward, title: "Move Selection Right", icon: "arrow.right",
               keyNames: ["rightarrow"], keyLabel: "→", scope: .selectionMode, usesActivationChord: false),
+        .init(action: .shiftSelectionUp, title: "Move Selection Up", icon: "arrow.up",
+              keyNames: ["uparrow"], keyLabel: "↑", scope: .selectionMode, usesActivationChord: false),
+        .init(action: .shiftSelectionDown, title: "Move Selection Down", icon: "arrow.down",
+              keyNames: ["downarrow"], keyLabel: "↓", scope: .selectionMode, usesActivationChord: false),
         .init(action: .assignAppKeybind, title: "Assign App Keybind", icon: "command",
               keyNames: ["u"], keyLabel: "U", scope: .activationChord, usesActivationChord: true),
         .init(action: .showAllKeybinds, title: "Show All Keybinds", icon: "command",

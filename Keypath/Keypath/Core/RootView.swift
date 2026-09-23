@@ -46,32 +46,40 @@ struct RootView: View {
     }
     
     var body: some View {
-        ZStack {
-            GlassBackground()
-            
-            VStack(spacing: 0.0) {
-                switch navigationManager.route {
-                case .settings:
-                    SettingsView()
-                case .paths:
-                    if recentAppManager.isVisible {
-                        RecentAppPickerView(manager: recentAppManager)
-                    } else {
-                        PathsView(paths: commandManager.currentPaths)
+        Group {
+            if navigationManager.route == .paths && recentAppManager.isVisible {
+                RecentAppPickerView(manager: recentAppManager)
+                    .frame(width: PathsWindowManager.recentAppsContentSize.width,
+                           height: PathsWindowManager.recentAppsContentSize.height)
+            } else {
+                ZStack {
+                    GlassBackground()
+
+                    VStack(spacing: 0.0) {
+                        switch navigationManager.route {
+                        case .settings:
+                            SettingsView()
+                        case .paths:
+                            PathsView(paths: commandManager.currentPaths)
+                        }
+
+                        BottomBarView()
+                            .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
                     }
                 }
-                
-                VStack {
-                    BottomBarView()
-                }
-                .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
+                .frame(width: PathsWindowManager.pathsContentSize.width,
+                       height: PathsWindowManager.pathsContentSize.height)
+                .containerShape(.rect(cornerRadius: 15.0))
             }
         }
-        .containerShape(.rect(cornerRadius: 15.0))
         .onAppear {
             commandManager.resetIndex()
             commandManager.setPaths(paths)
+            PathsWindowManager.shared.setRecentAppsMode(recentAppManager.isVisible)
             scrollID = 0
+        }
+        .onChange(of: recentAppManager.isVisible) { _, isVisible in
+            PathsWindowManager.shared.setRecentAppsMode(isVisible)
         }
         .onChange(of: navigationManager.route) { _, _ in
             if navigationManager.route == .settings {

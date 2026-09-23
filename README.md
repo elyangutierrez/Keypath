@@ -45,7 +45,7 @@ The Hyper Key is a quick double tap of the **left Option** key. It is represente
 | --- | --- |
 | `⌃⌃ C` | Show or hide the command reference while the HUD is open |
 | `⌃⌃ /` | Show or hide saved app keybinds |
-| `⌃⌃ S` | Toggle selection mode; use left and right arrows to move |
+| `⌃⌃ S` | Toggle selection mode; use arrow keys to move through the app grid |
 | `⌃⌃ U` | Assign a keybind to the selected app; press a supported letter or number |
 | `Escape` | Cancel keybind entry or close the app HUD |
 

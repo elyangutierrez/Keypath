@@ -115,6 +115,32 @@ struct KeyboardEventRouterTests {
             modifiers: KeyboardModifiers(),
             context: KeyboardRouteContext()
         ) == .passThrough)
+
+        #expect(router.decision(
+            for: Keymaps.keyCodes["rightarrow"]!,
+            modifiers: KeyboardModifiers(shift: true),
+            context: KeyboardRouteContext(selectionModeIsActive: true)
+        ) == .handle(.moveSelection(by: 1)))
+
+        #expect(router.decision(
+            for: Keymaps.keyCodes["leftarrow"]!,
+            modifiers: KeyboardModifiers(),
+            context: KeyboardRouteContext(
+                activationChordIsPrimed: true,
+                selectionModeIsActive: true
+            )
+        ) == .handle(.moveSelection(by: -1)))
+
+        #expect(router.decision(
+            for: Keymaps.keyCodes["uparrow"]!,
+            modifiers: KeyboardModifiers(function: true),
+            context: KeyboardRouteContext(selectionModeIsActive: true)
+        ) == .handle(.moveSelection(by: -2)))
+        #expect(router.decision(
+            for: Keymaps.keyCodes["downarrow"]!,
+            modifiers: KeyboardModifiers(),
+            context: KeyboardRouteContext(selectionModeIsActive: true)
+        ) == .handle(.moveSelection(by: 2)))
     }
 
     @Test func recentPickerRoutesForwardReverseActivateAndCancelControls() {

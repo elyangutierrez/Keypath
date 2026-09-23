@@ -11,8 +11,12 @@ import SwiftUI
 
 class PathsWindowManager {
     static let shared = PathsWindowManager()
+
+    static let pathsContentSize = NSSize(width: 650, height: 465)
+    static let recentAppsContentSize = NSSize(width: 472, height: 372)
     
     private var panel: NSPanel?
+    private var isShowingRecentApps = false
     
     private init() {} // Prevent multiple instances
     
@@ -22,7 +26,7 @@ class PathsWindowManager {
         
         // Initialize the NSPanel
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 650, height: 465), // Size of your view
+            contentRect: NSRect(origin: .zero, size: Self.pathsContentSize),
             styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -52,16 +56,30 @@ class PathsWindowManager {
             if let screen = targetScreen {
                 let screenRect = screen.frame
                 
-                // Using the exact dimensions you set in your contentRect
-                let panelWidth: CGFloat = 650
-                let panelHeight: CGFloat = 425
-                
-                let x = screenRect.minX + (screenRect.width - panelWidth) / 2
-                let y = screenRect.minY + (screenRect.height - panelHeight) / 2
-                
+                let frame = panel.frame
+                let x = screenRect.midX - frame.width / 2
+                let y = screenRect.midY - frame.height / 2
                 panel.setFrameOrigin(NSPoint(x: x, y: y))
             }
         }
+    }
+
+    /// Resizes the existing floating panel so the recent-app picker is the only visible content.
+    /// The panel keeps its current center while switching between the picker and the main HUD.
+    func setRecentAppsMode(_ isShowingRecentApps: Bool) {
+        guard self.isShowingRecentApps != isShowingRecentApps,
+              let panel else { return }
+
+        self.isShowingRecentApps = isShowingRecentApps
+        let center = NSPoint(x: panel.frame.midX, y: panel.frame.midY)
+        let contentSize = isShowingRecentApps ? Self.recentAppsContentSize : Self.pathsContentSize
+        panel.setContentSize(contentSize)
+
+        let resizedFrame = panel.frame
+        panel.setFrameOrigin(NSPoint(
+            x: center.x - resizedFrame.width / 2,
+            y: center.y - resizedFrame.height / 2
+        ))
     }
     
     func show() {

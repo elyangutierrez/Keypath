@@ -159,7 +159,11 @@ struct PathView: View {
         .frame(height: 190)
         .containerShape(.rect(cornerRadius: 15.0))
         .overlay(alignment: .bottomTrailing) {
-            if isCurrentTargetPath && assignmentCoordinator.undoAvailable {
+            if assignmentCoordinator.isUndoTarget(
+                path,
+                among: commandManager.currentPaths,
+                isSelected: isCurrentTargetPath
+            ) {
                 Button {
                     assignmentCoordinator.undoLastChange()
                 } label: {
