@@ -14,31 +14,23 @@ struct RootView: View {
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
     @State private var navigationManager = NavigationManager.shared
+    @State private var recentAppManager = RecentAppManager.shared
     
     var paths: [Keypath] {
         
         print("Getting paths...")
         
         let currentPaths = ApplicationManager.getPaths()
+        let savedKeybinds = KeybindAssignmentCoordinator.shared.savedKeybinds(for: currentPaths)
         
         for path in currentPaths {
+            path.keybind = savedKeybinds[path.id]
+
             if path.hasVisibleWindow {
                 path.isWindowOpened = true
             }
         }
-        
-        let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
-        
-        if !existingKeybinds.isEmpty {
-            for keybind in existingKeybinds {
-                for path in currentPaths {
-                    if path.application.localizedName ?? "" == keybind.appName {
-                        path.keybind = keybind.keybind
-                    }
-                }
-            }
-        }
-        
+
         return currentPaths
     }
     
@@ -54,30 +46,46 @@ struct RootView: View {
     }
     
     var body: some View {
-        ZStack {
-            GlassBackground()
-            
-            VStack(spacing: 0.0) {
-                switch navigationManager.route {
-                case .settings:
-                    SettingsView()
-                case .paths:
-                    PathsView(paths: commandManager.currentPaths)
+        Group {
+            if navigationManager.route == .paths && recentAppManager.isVisible {
+                RecentAppPickerView(manager: recentAppManager)
+                    .frame(width: PathsWindowManager.recentAppsContentSize.width,
+                           height: PathsWindowManager.recentAppsContentSize.height)
+            } else {
+                ZStack {
+                    GlassBackground()
+
+                    VStack(spacing: 0.0) {
+                        switch navigationManager.route {
+                        case .settings:
+                            SettingsView()
+                        case .paths:
+                            PathsView(paths: commandManager.currentPaths)
+                        }
+
+                        BottomBarView()
+                            .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
+                    }
                 }
-                
-                VStack {
-                    BottomBarView()
-                }
-                .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55)
+                .frame(width: PathsWindowManager.pathsContentSize.width,
+                       height: PathsWindowManager.pathsContentSize.height)
+                .containerShape(.rect(cornerRadius: 15.0))
+                .clipShape(.rect(cornerRadius: 15.0))
             }
         }
-        .containerShape(.rect(cornerRadius: 15.0))
         .onAppear {
             commandManager.resetIndex()
             commandManager.setPaths(paths)
+            PathsWindowManager.shared.setRecentAppsMode(recentAppManager.isVisible)
             scrollID = 0
         }
+        .onChange(of: recentAppManager.isVisible) { _, isVisible in
+            PathsWindowManager.shared.setRecentAppsMode(isVisible)
+        }
         .onChange(of: navigationManager.route) { _, _ in
+            if navigationManager.route == .settings {
+                recentAppManager.cancelPicker()
+            }
             commandManager.setPaths(paths)
         }
         .onReceive(NotificationCenter.default.publisher(for: .excludedAppsDidChange)) { _ in

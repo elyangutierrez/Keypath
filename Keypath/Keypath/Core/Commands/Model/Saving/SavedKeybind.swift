@@ -20,6 +20,13 @@ class SavedKeybind: Comparable {
         self.bundleID = bundleID
         self.keybind = keybind
     }
+
+    init(snapshot: SavedKeybindSnapshot) {
+        id = snapshot.id
+        appName = snapshot.appName
+        bundleID = snapshot.bundleID
+        keybind = snapshot.keybind
+    }
     
     // go by the last key number or letter
     static func < (lhs: SavedKeybind, rhs: SavedKeybind) -> Bool {
@@ -31,5 +38,27 @@ class SavedKeybind: Comparable {
         }
         
         return false
+    }
+}
+
+/// A value copy of a saved binding that can be safely held while a transaction is prepared.
+struct SavedKeybindSnapshot: Identifiable {
+    let id: UUID
+    var appName: String
+    var bundleID: String?
+    var keybind: Keybind
+
+    init(id: UUID = UUID(), appName: String, bundleID: String?, keybind: Keybind) {
+        self.id = id
+        self.appName = appName
+        self.bundleID = bundleID
+        self.keybind = keybind
+    }
+
+    init(_ savedKeybind: SavedKeybind) {
+        id = savedKeybind.id
+        appName = savedKeybind.appName
+        bundleID = savedKeybind.bundleID
+        keybind = savedKeybind.keybind
     }
 }

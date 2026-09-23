@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     
     @FocusState private var isFocused
+    @FocusState private var undoButtonIsFocused: Bool
     
     @State private var excludedApps: [String] = Config.shared.getExcludedApps()
     @State private var newAppPath: String = ""
@@ -17,7 +18,20 @@ struct SettingsView: View {
     @State private var isShowingExclusionList: Bool = true
     @State private var applicationList: [ListApplication] = []
     @State private var applicationNames: [String] = []
-    @State private var dataManager = DataManager.shared
+    @State private var assignmentCoordinator = KeybindAssignmentCoordinator.shared
+    @State private var activeAlert: SettingsAlert?
+
+    private enum SettingsAlert: Identifiable {
+        case resetConfirmation
+        case error(String)
+
+        var id: String {
+            switch self {
+            case .resetConfirmation: return "reset-confirmation"
+            case let .error(message): return "error-\(message)"
+            }
+        }
+    }
     
     @State private var selectedApp: ListApplication?
     
@@ -177,17 +191,35 @@ struct SettingsView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 20.0) {
-                            Text("Resetting your keybinds will remove all custom keybinds you have set up. This cannot be undone.")
+                            Text("Resetting removes all custom keybinds. You can undo the reset from the HUD for 30 seconds.")
                                 .fixedSize(horizontal: false, vertical: true)
                             
                             Button(role: .destructive, action: {
-                                dataManager.removeAllSavedKeybinds()
+                                activeAlert = .resetConfirmation
                             }) {
-                                Text("Reset")
+                                Text("Reset All Keybinds")
                                     .frame(height: 25)
                             }
                             .buttonStyle(.glassProminent)
                             .tint(.red)
+
+                            if let statusMessage = assignmentCoordinator.statusMessage {
+                                Text(statusMessage)
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            if assignmentCoordinator.undoAvailable {
+                                Button {
+                                    assignmentCoordinator.undoLastChange()
+                                } label: {
+                                    Label(assignmentCoordinator.undoDescription ?? "Undo", systemImage: "arrow.uturn.backward")
+                                }
+                                .buttonStyle(.glass)
+                                .focused($undoButtonIsFocused)
+                                .accessibilityLabel("Undo the last keybind change")
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -203,9 +235,45 @@ struct SettingsView: View {
         .onAppear {
             fetchApplications()
         }
+        .onChange(of: assignmentCoordinator.errorMessage) { _, message in
+            if let message {
+                activeAlert = .error(message)
+            }
+        }
+        .onChange(of: assignmentCoordinator.isUndoFocused) { _, focused in
+            undoButtonIsFocused = focused
+        }
+        .onChange(of: undoButtonIsFocused) { _, focused in
+            if focused {
+                assignmentCoordinator.setUndoFocused(true)
+            }
+        }
+        .alert(item: $activeAlert) { alert in
+            switch alert {
+            case .resetConfirmation:
+                Alert(
+                    title: Text("Reset Keybinds?"),
+                    message: Text("All custom app keybinds will be removed. You can undo this from the HUD for 30 seconds."),
+                    primaryButton: .cancel(Text("Cancel")),
+                    secondaryButton: .destructive(Text("Reset"), action: {
+                        assignmentCoordinator.resetAllKeybinds()
+                    })
+                )
+            case let .error(message):
+                Alert(
+                    title: Text("Could Not Update Keybinds"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"), action: {
+                        assignmentCoordinator.clearError()
+                    })
+                )
+            }
+        }
         .onTapGesture {
             isFocused = false
         }
+        .padding(.top)
+        .scrollClipDisabled()
     }
     
     func getFillStyle(for app: ListApplication) -> AnyShapeStyle {

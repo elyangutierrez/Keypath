@@ -16,19 +16,36 @@ struct KeypathApp: App {
         // 1. We replace WindowGroup with MenuBarExtra so it lives in the top right!
         
         MenuBarExtra {
-            
+
+            Text(appDelegate.commandListener.statusMessage)
+                .font(.caption)
+
+            if appDelegate.commandListener.status != .listening {
+                Button("Retry Keyboard Listener") {
+                    appDelegate.commandListener.start()
+                }
+                Button("Open Accessibility Settings") {
+                    if let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(settingsURL)
+                    }
+                }
+            }
+
+            Divider()
+
             Button("Toggle Auto-Launch") {
                 let config = Config.shared
-                
                 config.setAutoLaunch()
             }
-            
+
             Button("Show All Keypaths") {
-                // Manually trigger your HUD from the menu bar as a fallback
                 let manager = KeypathCommandManager.shared
                 if appDelegate.commandListener.isListeningForPath {
+                    RecentAppManager.shared.cancelPicker()
+                    KeybindAssignmentCoordinator.shared.setUndoFocused(false)
+                    manager.resetModes()
+                    manager.resetIndex()
                     PathsWindowManager.shared.hide()
-                    manager.isShowingCommands = false
                     appDelegate.commandListener.isListeningForPath = false
                 } else {
                     PathsWindowManager.shared.show()
@@ -36,8 +53,6 @@ struct KeypathApp: App {
                 }
             }
 
-            Divider()
-            
             Button("Quit Keypath") {
                 NSApplication.shared.terminate(nil)
             }

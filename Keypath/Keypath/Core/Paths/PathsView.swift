@@ -45,6 +45,7 @@ struct PathsView: View {
                 .scrollIndicators(.never)
                 .contentMargins(.bottom, 30, for: .scrollContent)
                 .padding(.horizontal)
+                .padding(.top)
                 .scrollPosition(id: $scrollID)
                 .scrollTargetBehavior(.viewAligned)
                 .onChange(of: commandManager.currentIndex) { _, newIndex in
@@ -54,6 +55,7 @@ struct PathsView: View {
                         }
                     }
                 }
+                .scrollClipDisabled()
                 .overlay {
                     if commandManager.isShowingCommands {
                         ZStack {
