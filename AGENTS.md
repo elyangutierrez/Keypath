@@ -11,17 +11,19 @@ The app is an accessory-style menu bar app (`LSUIElement = YES`), not a conventi
 - At launch, `AppDelegate` synchronizes the saved auto-launch preference, creates the HUD panel with `RootView`, and starts the global keyboard event listener.
 - The listener requires macOS Accessibility permission. It watches modifier changes and key-down events with a Core Graphics event tap.
 - Global shortcut handling is suspended while the Settings route is active.
-- The current activation chord is a **double tap of left Option**, followed by a command within about 1.5 seconds. The code recognizes these commands:
+- The activation chord is a **double tap of left Option**, followed by a command within about 1.5 seconds. The code recognizes these commands:
   - `K`: show or hide the app HUD.
+  - `Tab`: open the recent-app picker; inside it, `Tab` and `Shift-Tab` cycle, Return selects, and Escape cancels.
   - `C`: show or hide the command reference while the HUD is open.
   - `/`: show or hide the saved app-keybind list.
   - `S`: enter or leave selection mode; left/right arrows move the selection.
   - `U`: assign a keybind to the selected app; press Escape to cancel.
   - In the HUD, a configured letter activates its app. If that app is already active and its window is open, the implementation minimizes its windows; otherwise it activates the app.
-- The README currently says the activation chord is double Control. Treat `Keymaps.swift` and `CommandListener.swift` as the implementation source of truth if documenting or changing the chord, and update the README when appropriate.
+- The HUD command listener consumes only recognized Keypath shortcuts and passes unrelated keys through. Keep that invariant when changing keyboard handling.
 - The HUD lists running regular-policy apps except those excluded in Settings. The default excluded names are Finder and Preview. Apps are sorted by localized name.
 - Settings lets the user add installed apps to the exclusion list, remove exclusions, and reset all custom keybinds. The installed-app picker scans `/Applications` and `/System/Applications`.
-- A saved app keybind stores the app's display name, optional bundle identifier, and a Codable keybind. The HUD currently restores saved keybinds by matching the app's localized name.
+- A saved app keybind stores the app's display name, optional bundle identifier, and a Codable keybind. Use bundle identifier as the canonical identity; only recover legacy name-only records when the match is unambiguous.
+- Recent-app history is session-only and filtered by the same running-app and exclusion rules as the main HUD. The picker uses app names and icons and must not start ScreenCaptureKit preview loops.
 - App launch state is observed through `NSWorkspace` notifications so the HUD list can refresh when apps launch, terminate, hide, or unhide.
 - Each app card checks window visibility with Accessibility APIs and falls back to Core Graphics window information. It requests a ScreenCaptureKit screenshot of an on-screen app window on a five-second loop while its card is visible in the HUD. Previews are held in memory by process ID.
 
@@ -39,7 +41,9 @@ The app is an accessory-style menu bar app (`LSUIElement = YES`), not a conventi
 - `Keypath/Keypath/Core/RootView.swift`: root HUD view, route selection, construction of the running-app paths, and workspace notification refreshes.
 - `Keypath/Keypath/Core/Paths/`: app grid, bottom navigation bar, and empty-state view.
 - `Keypath/Keypath/Core/IndividualPath/`: one app card, window activation/minimizing and visibility checks, and screenshot preview state.
+- `Keypath/Keypath/Core/RecentApps/`: session MRU tracking and the lightweight recent-app picker.
 - `Keypath/Keypath/Core/Commands/`: command reference, saved-keybind list, keybind types, command state, and SwiftData persistence.
+- Keybind assignment and reset go through `KeybindAssignmentCoordinator`; preserve its conflict confirmation, save-error reporting, and temporary undo behavior.
 - `Keypath/Keypath/Core/Settings/`: excluded-app settings, app picker model, and `UserDefaults`/login-item configuration.
 - `Keypath/Keypath/Core/Navigation/`: shared route state for the HUD and Settings.
 - `Keypath/Keypath/Util/Keyboard/`: physical macOS key-code maps and the global keyboard event listener.
@@ -61,8 +65,8 @@ The app is an accessory-style menu bar app (`LSUIElement = YES`), not a conventi
 
 - Keep changes consistent with a macOS-only SwiftUI/AppKit app and the existing source layout. Do not add iOS assumptions.
 - Key codes in `Keymaps.swift` are physical macOS virtual key codes, not characters from the current keyboard layout. Keep the forward map, reverse map, and valid assignment map consistent when changing supported keys.
-- Keep global hotkey handling, keybind display, command documentation, and the README in sync. The command reference in `Commands.swift` is a separate displayed list from the event handling in `CommandListener.swift`.
+- Keep the shared shortcut definitions, command help, and README in sync. The left Option chord differs from the printed Control glyph used to depict the Hyper Key.
 - Treat Accessibility and ScreenCaptureKit calls as permission-sensitive and failure-prone. Preserve graceful behavior when a process has no accessible window, a screenshot is unavailable, or system permission is absent.
 - Preserve existing SwiftData records or provide an explicit migration if the saved-keybind schema changes. Avoid relying on app display names as globally unique identifiers without considering the existing stored format.
 - The shared Xcode scheme is `Keypath`. Build with `xcodebuild -project Keypath/Keypath.xcodeproj -scheme Keypath -configuration Debug build`; run unit tests with `xcodebuild test -project Keypath/Keypath.xcodeproj -scheme Keypath -destination 'platform=macOS'`.
-- The Xcode project declares a `KeypathUITests` target, but there are currently no UI test source files in the repository. The checked-in tests are the three unit-test files under `Keypath/KeypathTests/`.
+- The Xcode project declares a `KeypathUITests` target, but there are currently no UI test source files in the repository. Unit tests are under `Keypath/KeypathTests/`.

@@ -14,31 +14,23 @@ struct RootView: View {
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
     @State private var navigationManager = NavigationManager.shared
+    @State private var recentAppManager = RecentAppManager.shared
     
     var paths: [Keypath] {
         
         print("Getting paths...")
         
         let currentPaths = ApplicationManager.getPaths()
+        let savedKeybinds = KeybindAssignmentCoordinator.shared.savedKeybinds(for: currentPaths)
         
         for path in currentPaths {
+            path.keybind = savedKeybinds[path.id]
+
             if path.hasVisibleWindow {
                 path.isWindowOpened = true
             }
         }
-        
-        let existingKeybinds = DataManager.shared.fetchAllSavedKeybinds()
-        
-        if !existingKeybinds.isEmpty {
-            for keybind in existingKeybinds {
-                for path in currentPaths {
-                    if path.application.localizedName ?? "" == keybind.appName {
-                        path.keybind = keybind.keybind
-                    }
-                }
-            }
-        }
-        
+
         return currentPaths
     }
     
@@ -62,7 +54,11 @@ struct RootView: View {
                 case .settings:
                     SettingsView()
                 case .paths:
-                    PathsView(paths: commandManager.currentPaths)
+                    if recentAppManager.isVisible {
+                        RecentAppPickerView(manager: recentAppManager)
+                    } else {
+                        PathsView(paths: commandManager.currentPaths)
+                    }
                 }
                 
                 VStack {
@@ -78,6 +74,9 @@ struct RootView: View {
             scrollID = 0
         }
         .onChange(of: navigationManager.route) { _, _ in
+            if navigationManager.route == .settings {
+                recentAppManager.cancelPicker()
+            }
             commandManager.setPaths(paths)
         }
         .onReceive(NotificationCenter.default.publisher(for: .excludedAppsDidChange)) { _ in
