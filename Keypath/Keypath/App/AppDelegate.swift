@@ -23,7 +23,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         
         PathsWindowManager.shared.setupPanel(with: RootView())
-        
+
+        commandListener.onKeybindAssignmentRequested = { application, key in
+            KeybindAssignmentCoordinator.shared.requestAssignment(
+                appName: application.localizedName ?? "Unknown App",
+                bundleID: application.bundleIdentifier,
+                key: key
+            )
+        }
+        RecentAppManager.shared.startObserving()
         commandListener.start()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        commandListener.stop()
     }
 }

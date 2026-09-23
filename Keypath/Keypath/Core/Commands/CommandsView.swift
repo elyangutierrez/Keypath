@@ -8,11 +8,9 @@
 import SwiftUI
 
 struct CommandsView: View {
-    
-    @Environment(\.colorScheme) var colorScheme
-    
-    @State private var commands = Commands().cmds
-    
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var hoveredShortcut: ShortcutAction?
+
     var body: some View {
         VStack {
             ScrollView {
@@ -20,63 +18,64 @@ struct CommandsView: View {
                     HStack {
                         Text("Commands")
                             .fontWeight(.medium)
-                        
                         Spacer()
                     }
-                    
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(Commands.activationChordHelpText)
+                        Text(Commands.contextualShortcutHelpText)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                     VStack(spacing: 5.0) {
-                        ForEach(commands, id: \.id) { cmd in
-                            VStack {
-                                HStack {
-                                    HStack {
-                                        Image(systemName: cmd.icon)
-                                        
-                                        Text(cmd.name)
+                        ForEach(Commands.shortcuts) { shortcut in
+                            HStack(alignment: .top, spacing: 6.0) {
+                                Image(systemName: shortcut.icon)
+                                    .imageScale(.medium)
+
+                                Text(shortcut.title)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .layoutPriority(1)
+
+                                Spacer(minLength: 8)
+
+                                HStack(spacing: 5.0) {
+                                    if shortcut.usesActivationChord {
+                                        Image(colorScheme == .dark ? .lightHyperkey : .darkHyperkey)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 16, height: 16)
+                                            .background {
+                                                ConcentricRectangle(corners: .concentric(minimum: 5.0))
+                                                    .fill(.gray.opacity(0.4))
+                                                    .frame(width: 20, height: 20)
+                                            }
                                     }
-                                    
-                                    Spacer()
-                                    
-                                    HStack(spacing: 5.0) {
-                                        if case .symbol(_) = cmd.keybind.key1 {
-                                            Image(colorScheme == .dark ? .lightHyperkey : .darkHyperkey)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 16, height: 16)
-                                                .background (
-                                                    ConcentricRectangle(corners: .concentric(minimum: 5.0))
-                                                        .fill(.gray.opacity(0.4))
-                                                        .frame(width: 20, height: 20)
-                                                )
+
+                                    Text(shortcut.keyLabel)
+                                        .font(.system(.caption, design: .rounded).weight(.medium))
+                                        .padding(.horizontal, 5)
+                                        .frame(minWidth: 20, minHeight: 20)
+                                        .background {
+                                            ConcentricRectangle(corners: .concentric(minimum: 5.0))
+                                                .fill(.gray.opacity(0.4))
                                         }
-                                        
-                                        if case let .letter(letter) = cmd.keybind.key2 {
-                                            Text(letter)
-                                                .frame(width: 20, height: 20)
-                                                .background(
-                                                    ConcentricRectangle(corners: .concentric(minimum: 5.0))
-                                                        .fill(.gray.opacity(0.4))
-                                                )
-                                        } else if case let .symbol(sym) = cmd.keybind.key2 {
-                                            Image(systemName: sym)
-                                                .frame(width: 20, height: 20)
-                                                .background(
-                                                    ConcentricRectangle(corners: .concentric(minimum: 5.0))
-                                                        .fill(.gray.opacity(0.4))
-                                                )
-                                        }
-                                    }
                                 }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
+                            .frame(maxWidth: .infinity, minHeight: 35, alignment: .topLeading)
                             .padding(.horizontal, 5)
-                            .background(
+                            .padding(.vertical, 4)
+                            .background {
                                 ConcentricRectangle(corners: .concentric(minimum: 10.0))
-                                    .fill(cmd.isHovered ? .gray.opacity(0.2) : .clear)
-                            )
+                                    .fill(hoveredShortcut == shortcut.action ? .gray.opacity(0.2) : .clear)
+                            }
                             .contentShape(.rect(cornerRadius: 10.0))
                             .onHover { hovering in
                                 withAnimation(.spring(duration: 0.3)) {
-                                    cmd.isHovered = hovering
+                                    hoveredShortcut = hovering ? shortcut.action : nil
                                 }
                             }
                         }

@@ -21,24 +21,32 @@ A personal macOS app that allows for easy navigation across your apps via keybin
 
 ### About The Project
 
-Keypath was made for one primary reason: effortless app switching via keybinds. As a multiple virtual desktop user, switching between desktops and then focusing said-so app into focus has never been easier. Sure, there are probably similar applications like Keypath, but as a developer, I knew exactly what I wanted and Keypath does it just fine. 
+Keypath is a menu bar utility for switching between running Mac apps from the keyboard. macOS handles moving focus to an app on another Space; Keypath does not move windows between Spaces.
 
 ### Commands
 
 #### Hyper Key
 
-In order to simplify key detection, the hyper key consists of double tapping control and is represented as a superellipse:
+The Hyper Key is a quick double tap of the **left Option** key. It is represented by a superellipse:
 
-` ⌃⌃ `
+`⌃⌃`
 
-#### Opening/Closing
+#### Open or close the app HUD
 
 ` ⌃⌃ K `
 
-#### Commands
+#### Recent apps
 
-` ⌃⌃ C `
+` ⌃⌃ Tab ` opens the recent-app picker. `Tab` moves forward, `Shift-Tab` moves backward, `Return` switches to the selected app, and `Escape` closes the picker.
 
-#### Keybinds
+#### Other commands
 
-` ⌃⌃ / `
+| Shortcut | Action |
+| --- | --- |
+| `⌃⌃ C` | Show or hide the command reference while the HUD is open |
+| `⌃⌃ /` | Show or hide saved app keybinds |
+| `⌃⌃ S` | Toggle selection mode; use arrow keys to move through the app grid |
+| `⌃⌃ U` | Assign a keybind to the selected app; press a supported letter or number |
+| `Escape` | Cancel keybind entry or close the app HUD |
+
+When assigning a key that belongs to another app, Keypath asks before moving it. After a successful assignment or reset, an Undo action is available in the HUD for 30 seconds. Press `Tab` to focus Undo, then `Return` or `Enter` to restore the previous bindings.

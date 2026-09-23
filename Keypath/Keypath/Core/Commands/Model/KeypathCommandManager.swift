@@ -35,19 +35,16 @@ final class KeypathCommandManager {
     }
     
     func shiftSelectionToLeft() {
-        guard currentIndex > 0 else {
-            return
-        }
-        
-        currentIndex -= 1
+        shiftSelection(by: -1)
     }
     
     func shiftSelectionToRight() {
-        guard currentIndex < currentNumberOfApps - 1 else {
-            return
-        }
-        
-        currentIndex += 1
+        shiftSelection(by: 1)
+    }
+
+    func shiftSelection(by offset: Int) {
+        guard currentNumberOfApps > 0 else { return }
+        currentIndex = min(max(currentIndex + offset, 0), currentNumberOfApps - 1)
     }
     
     func resetIndex() {

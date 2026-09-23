@@ -9,10 +9,18 @@ import AppKit
 import Foundation
 import SwiftUI
 
+private final class KeypathHUDPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 class PathsWindowManager {
     static let shared = PathsWindowManager()
+
+    static let pathsContentSize = NSSize(width: 650, height: 465)
+    static let recentAppsContentSize = NSSize(width: 472, height: 372)
     
     private var panel: NSPanel?
+    private var isShowingRecentApps = false
     
     private init() {} // Prevent multiple instances
     
@@ -21,9 +29,9 @@ class PathsWindowManager {
         let hostingController = NSHostingController(rootView: view)
         
         // Initialize the NSPanel
-        panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 650, height: 465), // Size of your view
-            styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
+        panel = KeypathHUDPanel(
+            contentRect: NSRect(origin: .zero, size: Self.pathsContentSize),
+            styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: false
         )
@@ -33,38 +41,31 @@ class PathsWindowManager {
             // Critical Settings for a HUD/Command Window
             panel.level = .floating // Stays on top of normal windows
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary] // Appears over fullscreen apps!
-            panel.isMovableByWindowBackground = true
-            panel.titlebarAppearsTransparent = true
-            panel.titleVisibility = .hidden
-            panel.standardWindowButton(.closeButton)?.isHidden = true
-            panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
-            panel.standardWindowButton(.zoomButton)?.isHidden = true
-            // ... existing panel configuration above ...
+            panel.isMovable = false
+            panel.isMovableByWindowBackground = false
             panel.backgroundColor = .clear
             panel.isOpaque = false
+            panel.hasShadow = false
             panel.contentViewController = hostingController
 
-            // 1. Find which screen the user is currently focused on (based on mouse position)
-            let mouseLocation = NSEvent.mouseLocation
-            let targetScreen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) }) ?? NSScreen.main
-
-            // 2. Mathematically calculate the dead center of that specific screen
-            if let screen = targetScreen {
-                let screenRect = screen.frame
-                
-                // Using the exact dimensions you set in your contentRect
-                let panelWidth: CGFloat = 650
-                let panelHeight: CGFloat = 425
-                
-                let x = screenRect.minX + (screenRect.width - panelWidth) / 2
-                let y = screenRect.minY + (screenRect.height - panelHeight) / 2
-                
-                panel.setFrameOrigin(NSPoint(x: x, y: y))
-            }
+            centerPanel(on: screenUnderPointer ?? NSScreen.main)
         }
+    }
+
+    /// Resizes the existing floating panel so the recent-app picker is the only visible content.
+    /// The panel keeps its current center while switching between the picker and the main HUD.
+    func setRecentAppsMode(_ isShowingRecentApps: Bool) {
+        guard self.isShowingRecentApps != isShowingRecentApps,
+              let panel else { return }
+
+        self.isShowingRecentApps = isShowingRecentApps
+        let contentSize = isShowingRecentApps ? Self.recentAppsContentSize : Self.pathsContentSize
+        panel.setContentSize(contentSize)
+        centerPanel(on: panel.screen ?? screenUnderPointer ?? NSScreen.main)
     }
     
     func show() {
+        centerPanel(on: screenUnderPointer ?? NSScreen.main)
         // Brings the panel to the front and makes it the "key" window to receive text input
         panel?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -72,5 +73,20 @@ class PathsWindowManager {
     
     func hide() {
         panel?.orderOut(nil)
+    }
+
+    private var screenUnderPointer: NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first { NSMouseInRect(mouseLocation, $0.frame, false) }
+    }
+
+    private func centerPanel(on screen: NSScreen?) {
+        guard let panel, let screen else { return }
+        let screenFrame = screen.frame
+        let panelFrame = panel.frame
+        panel.setFrameOrigin(NSPoint(
+            x: screenFrame.midX - panelFrame.width / 2,
+            y: screenFrame.midY - panelFrame.height / 2
+        ))
     }
 }
