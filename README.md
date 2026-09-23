@@ -27,9 +27,9 @@ Keypath was made for one primary reason: effortless app switching via keybinds. 
 
 #### Hyper Key
 
-In order to simplify key detection, the hyper key consists of double tapping control and is represented as a superellipse:
+In order to simplify key detection, the hyper key consists of double tapping option and is represented as a superellipse:
 
-` ⌃⌃ `
+`⌃⌃`
 
 #### Opening/Closing
 
