@@ -143,6 +143,23 @@ struct KeyboardEventRouterTests {
         ) == .handle(.moveSelection(by: 2)))
     }
 
+    @Test func verticalSelectionUsesTheConfiguredColumnCount() {
+        for columns in 2...4 {
+            let context = KeyboardRouteContext(
+                selectionModeIsActive: true,
+                gridColumnCount: columns
+            )
+            #expect(router.decision(
+                for: Keymaps.keyCodes["uparrow"]!,
+                context: context
+            ) == .handle(.moveSelection(by: -columns)))
+            #expect(router.decision(
+                for: Keymaps.keyCodes["downarrow"]!,
+                context: context
+            ) == .handle(.moveSelection(by: columns)))
+        }
+    }
+
     @Test func recentPickerRoutesForwardReverseActivateAndCancelControls() {
         let context = KeyboardRouteContext(recentAppPickerIsVisible: true)
         let tab = Keymaps.keyCodes["tab"]!

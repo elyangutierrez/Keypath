@@ -19,6 +19,10 @@ struct PathView: View {
     
     @Bindable var path: Keypath
     var isSelected: Bool
+    var cardSize: CGSize
+
+    private var isNarrow: Bool { cardSize.width < 160 }
+    private var isCompact: Bool { cardSize.width < 220 }
     
     var isChangingKeybind: Bool {
         commandManager.isInKeybindUpdateMode && isSelected
@@ -33,17 +37,24 @@ struct PathView: View {
             
             VStack {
                 VStack {
-                    HStack {
+                    HStack(spacing: isNarrow ? 4 : 8) {
                         Image(nsImage: path.application.icon ?? NSImage())
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: isNarrow ? 19 : 26, height: isNarrow ? 19 : 26)
                         
                         Text(path.application.localizedName ?? "Unknown")
+                            .font(isNarrow ? .caption2 : .body)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
                         
-                        Spacer()
+                        Spacer(minLength: 0)
                         
                         VStack {
                             HStack(spacing: -5.0) {
                                 if let keybind = path.keybind {
-                                    if case .symbol(_) = keybind.key1 {
+                                    if !isNarrow, case .symbol(_) = keybind.key1 {
                                         Rectangle()
                                             .fill(.clear)
                                             .frame(width: 25, height: 25)
@@ -57,12 +68,13 @@ struct PathView: View {
                                     
                                     if case let .letter(letter) = keybind.key2 {
                                         Text(letter)
-                                            .frame(width: 25, height: 25)
+                                            .font(isNarrow ? .caption : .body)
+                                            .frame(width: isNarrow ? 21 : 25, height: isNarrow ? 21 : 25)
                                     }
                                 } else {
                                     Image(systemName: "nosign")
                                         .fontWeight(.medium)
-                                        .frame(width: 25, height: 25)
+                                        .frame(width: isNarrow ? 21 : 25, height: isNarrow ? 21 : 25)
                                 }
                             }
                         }
@@ -99,7 +111,7 @@ struct PathView: View {
                                         if !path.isWindowOpened {
                                             Image(systemName: "eye.slash")
                                                 .resizable()
-                                                .frame(width: 35, height: 30)
+                                                .frame(width: isCompact ? 24 : 35, height: isCompact ? 21 : 30)
                                         }
                                     }
                             } else {
@@ -112,14 +124,15 @@ struct PathView: View {
                                         if !path.isWindowOpened {
                                             Image(systemName: "eye.slash")
                                                 .resizable()
-                                                .frame(width: 35, height: 30)
+                                                .frame(width: isCompact ? 24 : 35, height: isCompact ? 21 : 30)
                                         }
                                     }
                             }
                         } else {
                             Image(nsImage: path.application.icon ?? NSImage())
                                 .resizable()
-                                .frame(width: 80, height: 80)
+                                .frame(width: isNarrow ? 40 : (isCompact ? 60 : 80),
+                                       height: isNarrow ? 40 : (isCompact ? 60 : 80))
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -130,7 +143,7 @@ struct PathView: View {
                     )
                 }
             }
-            .padding(10)
+            .padding(isNarrow ? 7 : 10)
             .overlay {
                 if isChangingKeybind {
                     ZStack {
@@ -138,14 +151,15 @@ struct PathView: View {
                             .fill(.ultraThickMaterial)
                             .opacity(0.9)
                         
-                        VStack(spacing: 15.0) {
+                        VStack(spacing: isNarrow ? 5 : 15) {
                             Image(systemName: "keyboard")
                                 .resizable()
-                                .frame(width: 35, height: 25)
+                                .frame(width: isNarrow ? 25 : 35, height: isNarrow ? 18 : 25)
                             
-                            Text("Enter your new keybind")
-                                .font(.headline)
+                            Text(isNarrow ? "Press a key" : "Enter your new keybind")
+                                .font(isNarrow ? .caption : .headline)
                                 .fontWeight(.medium)
+                                .multilineTextAlignment(.center)
                         }
                     }
                 }
@@ -155,8 +169,7 @@ struct PathView: View {
                 await runScreenshotLoop()
             }
         }
-        .frame(width: 275)
-        .frame(height: 190)
+        .frame(width: cardSize.width, height: cardSize.height)
         .containerShape(.rect(cornerRadius: 15.0))
         .overlay(alignment: .bottomTrailing) {
             if assignmentCoordinator.isUndoTarget(
@@ -287,5 +300,6 @@ struct PathView: View {
 }
 
 #Preview {
-    PathView(path: Keypath(application: NSRunningApplication()), isSelected: false)
+    PathView(path: Keypath(application: NSRunningApplication()),
+             isSelected: false, cardSize: CGSize(width: 275, height: 190))
 }
