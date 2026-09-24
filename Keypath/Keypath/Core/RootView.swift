@@ -36,11 +36,6 @@ struct RootView: View {
     
     @State private var scrollID: Int? = 0
     
-    let columns: [GridItem] = [
-        GridItem(.fixed(300)),
-        GridItem(.fixed(300))
-    ]
-    
     var backgroundColor: Color {
         colorScheme == .dark ? .black : .white
     }

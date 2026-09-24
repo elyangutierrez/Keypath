@@ -69,6 +69,7 @@ struct KeyboardRouteContext {
     var keybindsAreVisible = false
     var undoIsAvailable = false
     var undoIsFocused = false
+    var gridColumnCount = 2
     var runningAppKeybinds: Set<String> = []
     var savedAppKeybinds: Set<String> = []
 }
@@ -88,7 +89,7 @@ struct KeyboardEventRouter {
         if context.selectionModeIsActive, !context.recentAppPickerIsVisible,
            !context.keybindAssignmentIsActive,
            !modifiers.command, !modifiers.control, !modifiers.option, !modifiers.capsLock {
-            if let offset = selectionOffset(for: keyCode) {
+            if let offset = selectionOffset(for: keyCode, columns: context.gridColumnCount) {
                 return .handle(.moveSelection(by: offset))
             }
         }
@@ -214,11 +215,11 @@ struct KeyboardEventRouter {
         return .handle(.assignKeybind(key))
     }
 
-    private func selectionOffset(for keyCode: Int) -> Int? {
+    private func selectionOffset(for keyCode: Int, columns: Int) -> Int? {
         if Commands.shortcut(for: .shiftSelectionBackward).matches(keyCode: keyCode) { return -1 }
         if Commands.shortcut(for: .shiftSelectionForward).matches(keyCode: keyCode) { return 1 }
-        if Commands.shortcut(for: .shiftSelectionUp).matches(keyCode: keyCode) { return -2 }
-        if Commands.shortcut(for: .shiftSelectionDown).matches(keyCode: keyCode) { return 2 }
+        if Commands.shortcut(for: .shiftSelectionUp).matches(keyCode: keyCode) { return -columns }
+        if Commands.shortcut(for: .shiftSelectionDown).matches(keyCode: keyCode) { return columns }
         return nil
     }
 }
@@ -451,6 +452,7 @@ final class CommandListener {
             keybindsAreVisible: commandManager.isShowingKeybinds,
             undoIsAvailable: assignmentCoordinator.undoAvailable,
             undoIsFocused: assignmentCoordinator.isUndoFocused,
+            gridColumnCount: GridLayoutManager.shared.columnCount,
             runningAppKeybinds: runningAppKeybinds,
             savedAppKeybinds: savedAppKeybinds
         )

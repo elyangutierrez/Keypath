@@ -11,12 +11,28 @@ import SwiftUI
 struct PathsView: View {
     @State private var applicationManager = ApplicationManager()
     @State private var commandManager = KeypathCommandManager.shared
+    @State private var gridLayoutManager = GridLayoutManager.shared
     @State private var scrollID: pid_t? = nil
     
-    let columns: [GridItem] = [
-        GridItem(.fixed(300)),
-        GridItem(.fixed(300))
-    ]
+    private let gridSpacing: CGFloat = 15
+    private let horizontalPadding: CGFloat = 16
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(minimum: 0), spacing: gridSpacing),
+              count: gridLayoutManager.columnCount)
+    }
+
+    private var cardSize: CGSize {
+        let count = gridLayoutManager.columnCount
+        let gridWidth = PathsWindowManager.pathsContentSize.width - horizontalPadding * 2
+        let columnWidth = (gridWidth - CGFloat(count - 1) * gridSpacing) / CGFloat(count)
+        let height: CGFloat = switch count {
+        case 3: 150
+        case 4: 125
+        default: 190
+        }
+        return CGSize(width: min(275, columnWidth), height: height)
+    }
     
     var paths: [Keypath]
     
@@ -24,11 +40,12 @@ struct PathsView: View {
         VStack {
             if !paths.isEmpty {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 15.0) {
+                    LazyVGrid(columns: columns, spacing: gridSpacing) {
                         ForEach(Array(paths.enumerated()), id: \.element.id) { index, path in
                             PathView(
                                 path: path,
-                                isSelected: getSelection(index)
+                                isSelected: getSelection(index),
+                                cardSize: cardSize
                             )
                             .id(path.id)
                             .onHover { hovering in
@@ -44,7 +61,7 @@ struct PathsView: View {
                 }
                 .scrollIndicators(.never)
                 .contentMargins(.bottom, 30, for: .scrollContent)
-                .padding(.horizontal)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.top)
                 .scrollPosition(id: $scrollID)
                 .scrollTargetBehavior(.viewAligned)
