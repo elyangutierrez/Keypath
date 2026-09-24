@@ -287,6 +287,7 @@ final class CommandListener {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var accessibilityPermissionRetryTask: Task<Void, Never>?
     private var chordTracker = ActivationChordTracker()
 
     private let router = KeyboardEventRouter()
@@ -308,8 +309,16 @@ final class CommandListener {
         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         guard AXIsProcessTrustedWithOptions(options) else {
             status = .accessibilityPermissionRequired
+            retryWhenAccessibilityPermissionIsGranted()
             return
         }
+
+        installEventTap()
+    }
+
+    private func installEventTap() {
+        accessibilityPermissionRetryTask?.cancel()
+        accessibilityPermissionRetryTask = nil
 
         let eventMask = (1 << CGEventType.flagsChanged.rawValue) | (1 << CGEventType.keyDown.rawValue)
 
@@ -347,6 +356,8 @@ final class CommandListener {
     }
 
     func stop() {
+        accessibilityPermissionRetryTask?.cancel()
+        accessibilityPermissionRetryTask = nil
         chordTracker.consume()
 
         if let runLoopSource {
@@ -361,6 +372,28 @@ final class CommandListener {
         }
 
         status = .stopped
+    }
+
+    private func retryWhenAccessibilityPermissionIsGranted() {
+        guard accessibilityPermissionRetryTask == nil else { return }
+
+        accessibilityPermissionRetryTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+
+                guard let self,
+                      self.status == .accessibilityPermissionRequired else { return }
+                guard AXIsProcessTrusted() else { continue }
+
+                self.accessibilityPermissionRetryTask = nil
+                self.installEventTap()
+                return
+            }
+        }
     }
 
     fileprivate func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
