@@ -23,6 +23,8 @@ A personal macOS app that allows for easy navigation across your apps via keybin
 
 Keypath is a menu bar utility for switching between running Mac apps from the keyboard. macOS handles moving focus to an app on another Space; Keypath does not move windows between Spaces.
 
+Window previews require Screen Recording permission. Choose **Request Screen Recording Access** from the menu bar menu, then grant access and restart the app. Debug and Release have separate permissions. If the prompt only opens System Settings and Keypath Debug is absent, use **+** in Screen & System Audio Recording to add Xcode's built `Keypath Debug.app`, enable it, and restart Keypath Debug.
+
 ### Commands
 
 #### Hyper Key
