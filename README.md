@@ -41,6 +41,10 @@ The Hyper Key is a quick double tap of the **left Option** key. It is represente
 
 ` ⌃⌃ Tab ` opens the recent-app picker. `Tab` moves forward, `Shift-Tab` moves backward, `Return` switches to the selected app, and `Escape` closes the picker.
 
+#### App windows
+
+After the Hyper Key, press a running app's assigned letter. One accessible window activates directly; apps with multiple accessible windows open a numbered chooser. For example, `⌃⌃ D 2` selects the second window of an app assigned to `D`. Press `1`–`9` to select a window on the current page, `Tab` or `Shift-Tab` to change pages, and `Escape` to cancel and return to the app that was active before the chooser opened. The focused window appears first; minimized windows are included and restored when selected. With no accessible windows, Keypath activates the app.
+
 #### Other commands
 
 | Shortcut | Action |

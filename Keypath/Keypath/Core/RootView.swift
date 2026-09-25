@@ -15,6 +15,7 @@ struct RootView: View {
     @State private var commandManager = KeypathCommandManager.shared
     @State private var navigationManager = NavigationManager.shared
     @State private var recentAppManager = RecentAppManager.shared
+    @State private var windowPickerManager = WindowPickerManager.shared
     
     var paths: [Keypath] {
         
@@ -42,7 +43,11 @@ struct RootView: View {
     
     var body: some View {
         Group {
-            if navigationManager.route == .paths && recentAppManager.isVisible {
+            if navigationManager.route == .paths && windowPickerManager.isVisible {
+                WindowPickerView(manager: windowPickerManager)
+                    .frame(width: PathsWindowManager.pathsContentSize.width,
+                           height: PathsWindowManager.pathsContentSize.height)
+            } else if navigationManager.route == .paths && recentAppManager.isVisible {
                 RecentAppPickerView(manager: recentAppManager)
                     .frame(width: PathsWindowManager.recentAppsContentSize.width,
                            height: PathsWindowManager.recentAppsContentSize.height)
@@ -80,6 +85,7 @@ struct RootView: View {
         .onChange(of: navigationManager.route) { _, _ in
             if navigationManager.route == .settings {
                 recentAppManager.cancelPicker()
+                windowPickerManager.finish()
             }
             commandManager.setPaths(paths)
         }

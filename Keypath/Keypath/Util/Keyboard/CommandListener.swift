@@ -33,6 +33,9 @@ enum KeyboardRouteAction: Equatable {
     case cycleRecentApps(by: Int)
     case activateRecentApp
     case cancelRecentAppPicker
+    case changeWindowPage(by: Int)
+    case selectWindow(number: Int)
+    case cancelWindowPicker
     case focusUndo
     case activateUndo
     case cancelKeybindAssignment
@@ -61,6 +64,8 @@ struct KeyboardRouteContext {
     var settingsAreVisible = false
     var activationChordIsPrimed = false
     var recentAppPickerIsVisible = false
+    var windowPickerIsVisible = false
+    var windowPickerWindowCount = 0
     var keybindAssignmentIsActive = false
     var selectedAppCanReceiveKeybind = false
     var hudIsVisible = false
@@ -82,6 +87,14 @@ struct KeyboardEventRouter {
         context: KeyboardRouteContext
     ) -> KeyboardRouteDecision {
         guard !context.settingsAreVisible else { return .passThrough }
+
+        if context.windowPickerIsVisible {
+            return windowPickerDecision(
+                for: keyCode,
+                modifiers: modifiers,
+                windowCount: context.windowPickerWindowCount
+            )
+        }
 
         // Some compact keyboards report Fn with navigation keys. During HUD
         // selection, accept Shift/Fn arrow events before general shortcut
@@ -200,6 +213,30 @@ struct KeyboardEventRouter {
         return .passThrough
     }
 
+    private func windowPickerDecision(
+        for keyCode: Int,
+        modifiers: KeyboardModifiers,
+        windowCount: Int
+    ) -> KeyboardRouteDecision {
+        guard !modifiers.hasUnsupportedModifier else { return .passThrough }
+
+        if Commands.shortcut(for: .cancelWindowPicker).matches(keyCode: keyCode),
+           !modifiers.shift {
+            return .handle(.cancelWindowPicker)
+        }
+        if Commands.shortcut(for: .windowPickerPage).matches(keyCode: keyCode) {
+            return .handle(.changeWindowPage(by: modifiers.shift ? -1 : 1))
+        }
+        guard !modifiers.shift,
+              let digit = Keymaps.mappings[keyCode],
+              let number = Int(digit),
+              number >= 1,
+              number <= min(WindowPickerManager.windowsPerPage, windowCount) else {
+            return .passThrough
+        }
+        return .handle(.selectWindow(number: number))
+    }
+
     private func keybindAssignmentDecision(
         for keyCode: Int,
         context: KeyboardRouteContext
@@ -289,15 +326,18 @@ final class CommandListener {
     private var runLoopSource: CFRunLoopSource?
     private var accessibilityPermissionRetryTask: Task<Void, Never>?
     private var chordTracker = ActivationChordTracker()
+    private var mostRecentExternalApplication: NSRunningApplication?
 
     private let router = KeyboardEventRouter()
     private let commandManager = KeypathCommandManager.shared
     private let navigationManager = NavigationManager.shared
     private let applicationManager = ApplicationManager()
     private let recentAppManager = RecentAppManager.shared
+    private let windowPickerManager = WindowPickerManager.shared
     private let assignmentCoordinator = KeybindAssignmentCoordinator.shared
 
     func start() {
+        rememberExternalFrontmostApplication()
         guard eventTap == nil else {
             if let eventTap, !CGEvent.tapIsEnabled(tap: eventTap) {
                 CGEvent.tapEnable(tap: eventTap, enable: true)
@@ -411,6 +451,7 @@ final class CommandListener {
                 return Unmanaged.passUnretained(event)
             }
 
+            rememberExternalFrontmostApplication()
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
             if keyCode == Keymaps.keyCodes["leftoption"], event.flags.contains(.maskAlternate) {
                 chordTracker.recordLeftOptionPress(at: Date().timeIntervalSinceReferenceDate)
@@ -425,6 +466,7 @@ final class CommandListener {
         }
 
         let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+        rememberExternalFrontmostApplication()
         let activationChordIsPrimed = chordTracker.isPrimed(at: Date().timeIntervalSinceReferenceDate)
         let context = makeRoutingContext(
             activationChordIsPrimed: activationChordIsPrimed,
@@ -477,6 +519,8 @@ final class CommandListener {
             settingsAreVisible: navigationManager.route == .settings,
             activationChordIsPrimed: activationChordIsPrimed,
             recentAppPickerIsVisible: recentAppManager.isVisible,
+            windowPickerIsVisible: windowPickerManager.isVisible,
+            windowPickerWindowCount: windowPickerManager.visibleWindows.count,
             keybindAssignmentIsActive: commandManager.isInKeybindUpdateMode,
             selectedAppCanReceiveKeybind: commandManager.currentPaths.indices.contains(commandManager.currentIndex),
             hudIsVisible: isListeningForPath,
@@ -562,10 +606,29 @@ final class CommandListener {
                 return Unmanaged.passUnretained(event)
             }
 
-            if matchedPath.isWindowOpened && matchedPath.application.isActive {
-                matchedPath.moveFromApp()
+            let windows = ApplicationWindowAccessibility.windows(for: matchedPath.application)
+            if windows.count > 1 {
+                windowPickerManager.begin(
+                    for: matchedPath.application,
+                    windows: windows,
+                    returningTo: returnApplicationAfterKeypath()
+                )
+                commandManager.resetModes()
+                recentAppManager.cancelPicker()
+                assignmentCoordinator.setUndoFocused(false)
+                isListeningForPath = true
+                withAnimation(.spring(duration: 0.3)) {
+                    PathsWindowManager.shared.show()
+                }
+                return nil
+            }
+
+            if let window = windows.first {
+                if !ApplicationWindowAccessibility.activate(window, in: matchedPath.application) {
+                    matchedPath.application.activate(options: [])
+                }
             } else {
-                matchedPath.moveToApp()
+                matchedPath.application.activate(options: [])
             }
             dismissHUDAfterAppSwitch()
             return nil
@@ -606,6 +669,28 @@ final class CommandListener {
                 ? nil
                 : Unmanaged.passUnretained(event)
 
+        case let .changeWindowPage(offset):
+            windowPickerManager.movePage(by: offset)
+            return nil
+
+        case let .selectWindow(number):
+            guard windowPickerManager.activateWindow(keyNumber: number) else {
+                return nil
+            }
+            dismissHUDAfterAppSwitch()
+            return nil
+
+        case .cancelWindowPicker:
+            windowPickerManager.cancel()
+            assignmentCoordinator.setUndoFocused(false)
+            commandManager.resetModes()
+            commandManager.resetIndex()
+            isListeningForPath = false
+            withAnimation(.spring(duration: 0.3)) {
+                PathsWindowManager.shared.hide()
+            }
+            return nil
+
         case .focusUndo:
             guard assignmentCoordinator.undoAvailable else {
                 return Unmanaged.passUnretained(event)
@@ -640,10 +725,25 @@ final class CommandListener {
     }
 
     private func dismissHUDAfterAppSwitch() {
+        windowPickerManager.finish()
         assignmentCoordinator.setUndoFocused(false)
         isListeningForPath = false
         commandManager.resetModes()
         commandManager.resetIndex()
         PathsWindowManager.shared.hide()
+    }
+
+    private func returnApplicationAfterKeypath() -> NSRunningApplication? {
+        rememberExternalFrontmostApplication()
+        return mostRecentExternalApplication
+    }
+
+    private func rememberExternalFrontmostApplication() {
+        guard let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+              frontmostApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+              !frontmostApplication.isTerminated else {
+            return
+        }
+        mostRecentExternalApplication = frontmostApplication
     }
 }

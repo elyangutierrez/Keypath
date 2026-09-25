@@ -22,6 +22,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Equatable {
     case cycleRecentAppsBackward
     case activateRecentApp
     case cancelRecentAppPicker
+    case windowPickerPage
+    case cancelWindowPicker
     case focusUndo
     case activateUndo
     case cancelKeybindAssignment
@@ -34,6 +36,7 @@ enum ShortcutScope: Equatable {
     case activationChord
     case selectionMode
     case recentAppPicker
+    case windowPicker
     case hud
 }
 
@@ -61,6 +64,7 @@ struct ShortcutDefinition: Identifiable {
 enum Commands {
     static let activationChordHelpText = "Double-tap left Option, then press the shown key."
     static let contextualShortcutHelpText = "Picker and HUD keys work while those views are open."
+    static let windowPickerHelpText = "For apps with multiple windows, press 1–9 to choose · Tab / Shift-Tab for more · Esc to cancel"
 
     static let shortcuts: [ShortcutDefinition] = [
         .init(action: .toggleHUD, title: "Toggle Keypath", icon: "macwindow",
@@ -91,6 +95,10 @@ enum Commands {
               keyNames: ["return", "enter"], keyLabel: "Return / Enter", scope: .recentAppPicker, usesActivationChord: false),
         .init(action: .cancelRecentAppPicker, title: "Cancel Recent App Picker", icon: "escape",
               keyNames: ["esc"], keyLabel: "Esc", scope: .recentAppPicker, usesActivationChord: false),
+        .init(action: .windowPickerPage, title: "Change Window Page", icon: "rectangle.stack",
+              keyNames: ["tab"], keyLabel: "Tab / Shift-Tab", scope: .windowPicker, usesActivationChord: false),
+        .init(action: .cancelWindowPicker, title: "Cancel Window Picker", icon: "escape",
+              keyNames: ["esc"], keyLabel: "Esc", scope: .windowPicker, usesActivationChord: false),
         .init(action: .focusUndo, title: "Focus Undo", icon: "arrow.uturn.backward",
               keyNames: ["tab"], keyLabel: "Tab", scope: .hud, usesActivationChord: false),
         .init(action: .activateUndo, title: "Undo Last Keybind Change", icon: "arrow.uturn.backward",
