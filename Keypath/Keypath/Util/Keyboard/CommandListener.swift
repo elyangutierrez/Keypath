@@ -349,7 +349,6 @@ final class CommandListener {
     private var accessibilityPermissionRetryTask: Task<Void, Never>?
     private var chordTracker = ActivationChordTracker()
     private var mostRecentExternalApplication: NSRunningApplication?
-    private var pendingSingleWindowActivationID: UUID?
     private var pendingWindowDiscoveryID: UUID?
     private var windowDiscoveryTask: Task<Void, Never>?
 
@@ -548,8 +547,7 @@ final class CommandListener {
             activationChordIsPrimed: activationChordIsPrimed,
             recentAppPickerIsVisible: recentAppManager.isVisible,
             windowPickerIsVisible: windowPickerManager.isVisible,
-            keyboardActionIsInProgress: windowPickerManager.isActivatingWindow
-                || pendingSingleWindowActivationID != nil,
+            keyboardActionIsInProgress: windowPickerManager.isActivatingWindow,
             windowPickerWindowCount: windowPickerManager.visibleWindows.count,
             keybindAssignmentIsActive: commandManager.isInKeybindUpdateMode,
             selectedAppCanReceiveKeybind: commandManager.currentPaths.indices.contains(commandManager.currentIndex),
@@ -649,8 +647,15 @@ final class CommandListener {
             guard let destination = assignmentCoordinator.savedDestination(matchingKey: key) else {
                 return Unmanaged.passUnretained(event)
             }
-            applicationManager.activateApplication(appName: destination.appName, bundleID: destination.bundleID)
-            dismissHUDAfterAppSwitch()
+            if let application = runningApplication(matching: destination) {
+                // The visible paths can briefly lag workspace state. If a
+                // saved destination is already running, use the same window
+                // discovery and restoration flow as a visible app card.
+                discoverWindowsAndActivate(Keypath(application: application))
+            } else {
+                applicationManager.activateApplication(appName: destination.appName, bundleID: destination.bundleID)
+                dismissHUDAfterAppSwitch()
+            }
             return nil
 
         case .openRecentAppPicker:
@@ -769,47 +774,136 @@ final class CommandListener {
                 return
             }
 
-            self.pendingWindowDiscoveryID = nil
-            self.windowDiscoveryTask = nil
-
             guard self.navigationManager.route == originalRoute,
                   originalRoute != .settings,
                   self.isListeningForPath == hudWasVisible,
                   !application.isTerminated else {
+                self.finishWindowDiscovery(discoveryID)
                 return
             }
 
-            if windows.count > 1 {
-                self.windowPickerManager.begin(
+            if !windows.isEmpty {
+                self.finishWindowDiscovery(discoveryID)
+                self.presentWindows(
+                    windows,
                     for: application,
-                    windows: windows,
                     keybind: keybind,
                     returningTo: returningApplication
                 )
-                self.commandManager.resetModes()
-                self.recentAppManager.cancelPicker()
-                self.assignmentCoordinator.setUndoFocused(false)
-                self.isListeningForPath = true
-                PathsWindowManager.shared.setWindowPickerContentSize(self.windowPickerManager.panelContentSize)
-                withAnimation(.spring(duration: 0.3)) {
-                    PathsWindowManager.shared.show()
-                }
                 return
             }
 
-            if let window = windows.first {
-                if window.element == nil || window.isOnScreen == false {
-                    self.activateSingleWindowAndVerify(window, in: application)
-                    return
-                }
-                if !ApplicationWindowAccessibility.activate(window, in: application) {
-                    application.activate(options: [])
-                }
-            } else {
-                application.activate(options: [])
+            // Some apps omit miniaturized windows from AXWindows and do not
+            // expose AXMainWindow until they are active. Activate first, then
+            // query AX again so any newly exposed minimized target follows the
+            // exact-window restoration and focus verification path.
+            NSApp.yieldActivation(to: application)
+            PathsWindowManager.shared.hide()
+            _ = application.unhide()
+            let activationRequested = application.activate(options: [.activateAllWindows])
+            guard self.pendingWindowDiscoveryID == discoveryID,
+                  !Task.isCancelled else {
+                return
             }
+            guard activationRequested else {
+                self.finishWindowDiscovery(discoveryID)
+                self.dismissHUDAfterAppSwitch()
+                return
+            }
+
+            let appBecameActive = await ApplicationWindowAccessibility.waitForApplicationActivation(of: application)
+            guard self.pendingWindowDiscoveryID == discoveryID,
+                  !Task.isCancelled else {
+                return
+            }
+            guard appBecameActive, !application.isTerminated else {
+                self.finishWindowDiscovery(discoveryID)
+                self.dismissHUDAfterAppSwitch()
+                return
+            }
+
+            let activatedWindows = await ApplicationWindowAccessibility.windows(for: application)
+            guard self.pendingWindowDiscoveryID == discoveryID,
+                  !Task.isCancelled,
+                  !application.isTerminated else {
+                return
+            }
+            guard self.navigationManager.route == originalRoute,
+                  self.isListeningForPath == hudWasVisible else {
+                self.finishWindowDiscovery(discoveryID)
+                return
+            }
+            self.finishWindowDiscovery(discoveryID)
+            if !activatedWindows.isEmpty {
+                self.presentWindows(
+                    activatedWindows,
+                    for: application,
+                    keybind: keybind,
+                    returningTo: returningApplication
+                )
+                return
+            }
+
             self.dismissHUDAfterAppSwitch()
         }
+    }
+
+    private func finishWindowDiscovery(_ discoveryID: UUID) {
+        guard pendingWindowDiscoveryID == discoveryID else { return }
+        pendingWindowDiscoveryID = nil
+        windowDiscoveryTask = nil
+    }
+
+    private func presentWindows(
+        _ windows: [AccessibleWindow],
+        for application: NSRunningApplication,
+        keybind: Keybind?,
+        returningTo returningApplication: NSRunningApplication?
+    ) {
+        if windows.count > 1 {
+            windowPickerManager.begin(
+                for: application,
+                windows: windows,
+                keybind: keybind,
+                returningTo: returningApplication
+            )
+            commandManager.resetModes()
+            recentAppManager.cancelPicker()
+            assignmentCoordinator.setUndoFocused(false)
+            isListeningForPath = true
+            PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
+            withAnimation(.spring(duration: 0.3)) {
+                PathsWindowManager.shared.show()
+            }
+            return
+        }
+
+        guard let window = windows.first else { return }
+        if ApplicationWindowAccessibility.minimizeIfActive(window, in: application) {
+            dismissHUDAfterAppSwitch()
+            return
+        }
+
+        windowPickerManager.begin(
+            for: application,
+            windows: [window],
+            keybind: keybind,
+            returningTo: returningApplication
+        )
+        activateWindowPickerSelection()
+    }
+
+    private func runningApplication(matching destination: SavedKeybindDestination) -> NSRunningApplication? {
+        let runningApplications = NSWorkspace.shared.runningApplications.filter {
+            $0.activationPolicy == .regular && !$0.isTerminated
+        }
+
+        if let bundleID = destination.bundleID {
+            return runningApplications.first { $0.bundleIdentifier == bundleID }
+        }
+
+        let nameMatches = runningApplications.filter { $0.localizedName == destination.appName }
+        return nameMatches.count == 1 ? nameMatches.first : nil
     }
 
     private func cancelPendingWindowDiscovery() {
@@ -820,7 +914,6 @@ final class CommandListener {
 
     private func activateWindowPickerSelection(keyNumber: Int? = nil) {
         guard let pickerSessionID = windowPickerManager.prepareWindowActivation() else { return }
-        PathsWindowManager.shared.hide()
         Task { @MainActor [weak self] in
             guard let self,
                   windowPickerManager.isVisible,
@@ -828,18 +921,18 @@ final class CommandListener {
                 return
             }
 
-            let didActivate: Bool
+            let activationResult: ApplicationWindowAccessibility.ActivationResult
             if let keyNumber {
-                didActivate = await windowPickerManager.activateWindow(
+                activationResult = await windowPickerManager.activateWindow(
                     keyNumber: keyNumber,
                     in: pickerSessionID
                 )
             } else {
-                didActivate = await windowPickerManager.activateSelectedWindow(in: pickerSessionID)
+                activationResult = await windowPickerManager.activateSelectedWindow(in: pickerSessionID)
             }
 
             guard windowPickerManager.pickerSessionID == pickerSessionID else { return }
-            guard didActivate else {
+            guard activationResult == .activated else {
                 if windowPickerManager.isVisible {
                     PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
                     PathsWindowManager.shared.show()
@@ -847,33 +940,6 @@ final class CommandListener {
                 return
             }
             dismissHUDAfterAppSwitch()
-        }
-    }
-
-    private func activateSingleWindowAndVerify(
-        _ window: AccessibleWindow,
-        in application: NSRunningApplication
-    ) {
-        let activationID = UUID()
-        pendingSingleWindowActivationID = activationID
-        let hudWasVisible = isListeningForPath
-        PathsWindowManager.shared.hide()
-
-        Task { @MainActor [weak self] in
-            guard let self,
-                  pendingSingleWindowActivationID == activationID else {
-                return
-            }
-
-            let didActivate = await ApplicationWindowAccessibility.activateAndVerify(window, in: application)
-            guard pendingSingleWindowActivationID == activationID else { return }
-            pendingSingleWindowActivationID = nil
-
-            if didActivate {
-                dismissHUDAfterAppSwitch()
-            } else if hudWasVisible, isListeningForPath {
-                PathsWindowManager.shared.show()
-            }
         }
     }
 

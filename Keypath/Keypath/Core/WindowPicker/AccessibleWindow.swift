@@ -47,7 +47,7 @@ enum ApplicationWindowAccessibility {
         let appElement = AXUIElementCreateApplication(pid)
 
         var axWindowsValue: CFTypeRef?
-        let axWindows: [AXUIElement]
+        var axWindows: [AXUIElement]
         if AXUIElementCopyAttributeValue(
             appElement,
             kAXWindowsAttribute as CFString,
@@ -57,6 +57,25 @@ enum ApplicationWindowAccessibility {
             axWindows = value
         } else {
             axWindows = []
+        }
+
+        // AXWindows should contain the app's windows, but some apps omit a
+        // miniaturized main window from that array. AXMainWindow is another
+        // supported app-level reference; admit it only when it independently
+        // identifies itself as a minimized standard window.
+        var mainWindowValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(
+            appElement,
+            kAXMainWindowAttribute as CFString,
+            &mainWindowValue
+        ) == .success,
+           let mainWindowValue,
+           CFGetTypeID(mainWindowValue) == AXUIElementGetTypeID() {
+            let mainWindow = unsafeDowncast(mainWindowValue, to: AXUIElement.self)
+            if minimizedState(of: mainWindow) == true,
+               windowKind(of: mainWindow) == .standard {
+                axWindows.append(mainWindow)
+            }
         }
 
         var focusedWindowValue: CFTypeRef?
@@ -145,6 +164,7 @@ enum ApplicationWindowAccessibility {
                     isOnScreen: matchingCGWindow.isOnScreen,
                     frame: frame,
                     windowID: axWindowID,
+                    spaceIDs: WindowPlatformBridge.managedSpaces(for: axWindowID),
                     element: element
                 ))
                 continue
@@ -164,13 +184,16 @@ enum ApplicationWindowAccessibility {
                 isOnScreen: matchingCGWindow?.isOnScreen,
                 frame: frame ?? matchingCGWindow?.frame,
                 windowID: axWindowID ?? matchingCGWindow?.windowID,
+                spaceIDs: (axWindowID ?? matchingCGWindow?.windowID).flatMap {
+                    WindowPlatformBridge.managedSpaces(for: $0)
+                },
                 element: element
             ))
         }
 
         // CG's list is ordered front-to-back. A CG-only window is included only
-        // when ScreenCaptureKit confirms the same process and window ID, the
-        // frames agree, and ScreenCaptureKit supplies a nonempty title.
+        // when ScreenCaptureKit confirms its identity and SkyLight confirms it
+        // is an ordered-in root window on a managed Space.
         for cgWindow in cgWindows where !consumedCGIDs.contains(cgWindow.windowID) {
             guard !mergedWindowIDs.contains(cgWindow.windowID),
                   let shareableWindows,
@@ -183,6 +206,22 @@ enum ApplicationWindowAccessibility {
                 continue
             }
 
+            guard let spaceIDs = WindowPlatformBridge.managedSpaces(for: cgWindow.windowID),
+                  WindowPlatformBridge.isOrderedRootWindow(cgWindow.windowID) else {
+                continue
+            }
+
+            let duplicatesAccessibilityWindow = merged.contains { draft in
+                guard draft.captureTitle == shareableTitle,
+                      let draftFrame = draft.frame,
+                      framesSubstantiallyOverlap(draftFrame, cgWindow.frame),
+                      let accessibilitySpaceIDs = draft.spaceIDs else {
+                    return false
+                }
+                return !spaceIDs.isDisjoint(with: accessibilitySpaceIDs)
+            }
+            guard !duplicatesAccessibilityWindow else { continue }
+
             consumedCGIDs.insert(cgWindow.windowID)
             mergedWindowIDs.insert(cgWindow.windowID)
             merged.append(WindowDraft(
@@ -192,6 +231,7 @@ enum ApplicationWindowAccessibility {
                 isOnScreen: cgWindow.isOnScreen,
                 frame: cgWindow.frame,
                 windowID: cgWindow.windowID,
+                spaceIDs: spaceIDs,
                 element: nil
             ))
         }
@@ -261,10 +301,33 @@ enum ApplicationWindowAccessibility {
         return result
     }
 
-    /// Performs a best-effort activation for existing synchronous callers.
-    /// New picker flows should use `activateAndVerify` before dismissing UI.
-    static func activate(_ window: AccessibleWindow, in application: NSRunningApplication) -> Bool {
-        beginActivation(window, in: application)
+    enum ActivationResult: Equatable {
+        case activated
+        case applicationActivationDenied
+        case applicationDidNotBecomeFrontmost
+        case windowMissing
+        case focusFailed
+        case cancelled
+    }
+
+    /// Minimizes the exact window when its application is currently frontmost.
+    /// Read AXMinimized live here instead of relying on the HUD's cached path state.
+    static func minimizeIfActive(
+        _ window: AccessibleWindow,
+        in application: NSRunningApplication
+    ) -> Bool {
+        guard !application.isTerminated,
+              NSWorkspace.shared.frontmostApplication?.processIdentifier == application.processIdentifier,
+              let element = window.element,
+              minimizedState(of: element) == false else {
+            return false
+        }
+
+        return AXUIElementSetAttributeValue(
+            element,
+            kAXMinimizedAttribute as CFString,
+            kCFBooleanTrue
+        ) == .success
     }
 
     /// Activates a specific window and confirms that macOS focused that exact
@@ -273,21 +336,66 @@ enum ApplicationWindowAccessibility {
     static func activateAndVerify(
         _ window: AccessibleWindow,
         in application: NSRunningApplication
-    ) async -> Bool {
-        guard beginActivation(window, in: application) else { return false }
+    ) async -> ActivationResult {
+        guard !Task.isCancelled else { return .cancelled }
+        guard !application.isTerminated else { return .windowMissing }
+
+        switch windowPresence(window, in: application) {
+        case .missing:
+            return .windowMissing
+        case .unknown:
+            return .focusFailed
+        case .present:
+            break
+        }
+
+        // Clear the minimized flag before activation, but do not wait for
+        // AX to reflect the change yet. Some apps process deminiaturization
+        // only after receiving their activation request.
+        var restoreRequest = requestRestoreIfMinimized(window)
+
+        let activationResult = await activateApplicationAndWait(application)
+        guard activationResult == .activated else {
+            return activationResult
+        }
+
+        // If the first AX request was rejected while the app was inactive,
+        // retry after activation. Poll only now, when the target app can
+        // finish deminiaturizing its selected window.
+        if restoreRequest == .failed {
+            restoreRequest = requestRestoreIfMinimized(window)
+        }
+        guard await waitForRestoration(restoreRequest, of: window) else {
+            return Task.isCancelled ? .cancelled : .focusFailed
+        }
+        guard !Task.isCancelled else { return .cancelled }
+
+        guard beginActivation(window, in: application) else {
+            if Task.isCancelled { return .cancelled }
+            return windowPresence(window, in: application) == .missing
+                ? .windowMissing
+                : .focusFailed
+        }
 
         if await waitForFocus(of: window, in: application) {
-            return true
+            return .activated
         }
+        guard !Task.isCancelled else { return .cancelled }
 
         // If the private Space switch did not result in exact focus for an AX
         // window, try the public, element-targeted action once and verify again.
-        guard window.isOnScreen == false,
-              let element = window.element,
-              activateWithAccessibility(element, window: window, in: application) else {
-            return false
+        if window.isOnScreen == false,
+           let element = window.element,
+           activateWithAccessibility(element) {
+            if await waitForFocus(of: window, in: application) {
+                return .activated
+            }
         }
-        return await waitForFocus(of: window, in: application)
+
+        guard !Task.isCancelled else { return .cancelled }
+        return windowPresence(window, in: application) == .missing
+            ? .windowMissing
+            : .focusFailed
     }
 
     private static func beginActivation(
@@ -305,7 +413,7 @@ enum ApplicationWindowAccessibility {
                ) {
                 return true
             }
-            return activateWithAccessibility(element, window: window, in: application)
+            return activateWithAccessibility(element)
         }
 
         guard let windowID = window.windowID else { return false }
@@ -319,22 +427,7 @@ enum ApplicationWindowAccessibility {
         )
     }
 
-    private static func activateWithAccessibility(
-        _ element: AXUIElement,
-        window: AccessibleWindow,
-        in application: NSRunningApplication
-    ) -> Bool {
-        _ = application.activate(options: [])
-
-        if window.isMinimized {
-            let restoreResult = AXUIElementSetAttributeValue(
-                element,
-                kAXMinimizedAttribute as CFString,
-                kCFBooleanFalse
-            )
-            guard restoreResult == .success else { return false }
-        }
-
+    private static func activateWithAccessibility(_ element: AXUIElement) -> Bool {
         let raiseResult = AXUIElementPerformAction(element, kAXRaiseAction as CFString)
         let focusResult = AXUIElementSetAttributeValue(
             element,
@@ -342,6 +435,158 @@ enum ApplicationWindowAccessibility {
             kCFBooleanTrue
         )
         return raiseResult == .success || focusResult == .success
+    }
+
+    private enum RestoreRequest: Equatable {
+        case notNeeded
+        case requested
+        case failed
+    }
+
+    private static func requestRestoreIfMinimized(_ window: AccessibleWindow) -> RestoreRequest {
+        guard let element = window.element else {
+            return window.isMinimized ? .failed : .notNeeded
+        }
+
+        let currentState = minimizedState(of: element)
+        guard currentState == true || (currentState == nil && window.isMinimized) else {
+            return .notNeeded
+        }
+
+        return AXUIElementSetAttributeValue(
+            element,
+            kAXMinimizedAttribute as CFString,
+            kCFBooleanFalse
+        ) == .success ? .requested : .failed
+    }
+
+    private static func waitForRestoration(
+        _ request: RestoreRequest,
+        of window: AccessibleWindow
+    ) async -> Bool {
+        guard request != .failed else { return false }
+        guard request == .requested else { return true }
+        guard let element = window.element else { return !window.isMinimized }
+
+        let deadline = ContinuousClock.now + .seconds(2)
+        while ContinuousClock.now < deadline {
+            guard !Task.isCancelled else { return false }
+            if minimizedState(of: element) == false { return true }
+            do {
+                try await Task.sleep(for: .milliseconds(60))
+            } catch {
+                return false
+            }
+        }
+        return minimizedState(of: element) == false
+    }
+
+    private static func activateApplicationAndWait(
+        _ application: NSRunningApplication
+    ) async -> ActivationResult {
+        let requestWasAccepted = application.activate(options: [])
+        let initialWait = requestWasAccepted ? Duration.seconds(2) : .milliseconds(250)
+        if await waitForApplicationActivation(of: application, timeout: initialWait) {
+            return .activated
+        }
+        guard !Task.isCancelled else { return .cancelled }
+        guard !application.isTerminated else { return .windowMissing }
+
+        // Accessory apps such as Keypath can fail to hand off activation from
+        // a nonactivating panel. Ask Launch Services to activate the existing
+        // app instance, then continue only after that exact PID is frontmost.
+        if let applicationURL = application.bundleURL {
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            configuration.createsNewApplicationInstance = false
+            NSWorkspace.shared.openApplication(
+                at: applicationURL,
+                configuration: configuration,
+                completionHandler: nil
+            )
+
+            if await waitForApplicationActivation(of: application) {
+                return .activated
+            }
+            guard !Task.isCancelled else { return .cancelled }
+            guard !application.isTerminated else { return .windowMissing }
+        }
+
+        return requestWasAccepted ? .applicationDidNotBecomeFrontmost : .applicationActivationDenied
+    }
+
+    private static func windowPresence(
+        _ window: AccessibleWindow,
+        in application: NSRunningApplication
+    ) -> WindowPresence {
+        let cgWindows = CoreGraphicsWindowRecord.windows(for: application.processIdentifier)
+        if let windowID = window.windowID,
+           cgWindows.contains(where: { $0.windowID == windowID }) {
+            return .present
+        }
+
+        // Some apps temporarily omit miniaturized windows from the current
+        // window-server snapshot. Accept the captured AX window only when it
+        // still identifies itself as a standard window and currently reports
+        // its minimized state; cached picker state alone is not enough.
+        if isLiveMinimizedAXWindow(window) {
+            return .present
+        }
+
+        guard let targetElement = window.element else { return .missing }
+        let appElement = AXUIElementCreateApplication(application.processIdentifier)
+        var windowsValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            appElement,
+            kAXWindowsAttribute as CFString,
+            &windowsValue
+        ) == .success,
+              var currentWindows = windowsValue as? [AXUIElement] else {
+            return .unknown
+        }
+
+        var mainWindowValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(
+            appElement,
+            kAXMainWindowAttribute as CFString,
+            &mainWindowValue
+        ) == .success,
+           let mainWindowValue,
+           CFGetTypeID(mainWindowValue) == AXUIElementGetTypeID() {
+            currentWindows.append(unsafeDowncast(mainWindowValue, to: AXUIElement.self))
+        }
+
+        let targetWindowID = window.windowID
+        return currentWindows.contains { currentElement in
+            if CFEqual(currentElement as CFTypeRef, targetElement as CFTypeRef) {
+                return true
+            }
+            guard let targetWindowID,
+                  let currentWindowID = WindowPlatformBridge.windowID(for: currentElement) else {
+                return false
+            }
+            return currentWindowID == targetWindowID
+        } ? .present : .missing
+    }
+
+    private enum WindowPresence: Equatable {
+        case present
+        case missing
+        case unknown
+    }
+
+    private static func isLiveMinimizedAXWindow(_ window: AccessibleWindow) -> Bool {
+        guard let element = window.element,
+              minimizedState(of: element) == true,
+              windowKind(of: element) == .standard else {
+            return false
+        }
+
+        if let expectedWindowID = window.windowID,
+           let currentWindowID = WindowPlatformBridge.windowID(for: element) {
+            return currentWindowID == expectedWindowID
+        }
+        return true
     }
 
     private static func waitForFocus(
@@ -358,6 +603,25 @@ enum ApplicationWindowAccessibility {
             }
         }
         return false
+    }
+
+    static func waitForApplicationActivation(
+        of application: NSRunningApplication,
+        timeout: Duration = .seconds(2)
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier == application.processIdentifier {
+                return true
+            }
+            guard !application.isTerminated else { return false }
+            do {
+                try await Task.sleep(for: .milliseconds(70))
+            } catch {
+                return false
+            }
+        }
+        return NSWorkspace.shared.frontmostApplication?.processIdentifier == application.processIdentifier
     }
 
     private static func isFocused(
@@ -383,13 +647,14 @@ enum ApplicationWindowAccessibility {
         }
 
         let focusedElement = unsafeDowncast(focusedValue, to: AXUIElement.self)
+        if let targetElement = window.element,
+           CFEqual(focusedElement as CFTypeRef, targetElement as CFTypeRef) {
+            return true
+        }
+
         if let focusedWindowID = WindowPlatformBridge.windowID(for: focusedElement),
            let targetWindowID = window.windowID {
             return focusedWindowID == targetWindowID
-        }
-
-        if let targetElement = window.element {
-            return CFEqual(focusedElement as CFTypeRef, targetElement as CFTypeRef)
         }
 
         // AX may not expose a CG-only target after a Space switch. As a
@@ -454,12 +719,20 @@ enum ApplicationWindowAccessibility {
     }
 
     private static func minimizedAttribute(of element: AXUIElement) -> Bool {
+        minimizedState(of: element) == true
+    }
+
+    private static func minimizedState(of element: AXUIElement) -> Bool? {
         var value: CFTypeRef?
-        return AXUIElementCopyAttributeValue(
+        guard AXUIElementCopyAttributeValue(
             element,
             kAXMinimizedAttribute as CFString,
             &value
-        ) == .success && (value as? Bool == true)
+        ) == .success,
+              let value else {
+            return nil
+        }
+        return value as? Bool
     }
 
     private static func uniquelyMatchingCGWindow(
@@ -491,6 +764,40 @@ enum ApplicationWindowAccessibility {
         return direct
             && abs(lhs.width - rhs.width) <= sizeTolerance
             && abs(lhs.height - rhs.height) <= sizeTolerance
+    }
+
+    private static func framesSubstantiallyOverlap(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
+        guard lhs.origin.x.isFinite,
+              lhs.origin.y.isFinite,
+              lhs.width.isFinite,
+              lhs.height.isFinite,
+              rhs.origin.x.isFinite,
+              rhs.origin.y.isFinite,
+              rhs.width.isFinite,
+              rhs.height.isFinite,
+              lhs.width > 0,
+              lhs.height > 0,
+              rhs.width > 0,
+              rhs.height > 0 else {
+            return false
+        }
+
+        let intersection = lhs.intersection(rhs)
+        guard !intersection.isNull else { return false }
+
+        let intersectionArea = intersection.width * intersection.height
+        let lhsArea = lhs.width * lhs.height
+        let rhsArea = rhs.width * rhs.height
+        let smallerArea = min(lhsArea, rhsArea)
+        guard intersectionArea > 0, smallerArea > 0 else { return false }
+
+        // Require at least 90% of the smaller frame to overlap and similar
+        // dimensions so a small same-titled child surface is not treated as a duplicate.
+        let widthSimilarity = min(lhs.width, rhs.width) / max(lhs.width, rhs.width)
+        let heightSimilarity = min(lhs.height, rhs.height) / max(lhs.height, rhs.height)
+        return intersectionArea / smallerArea >= 0.90
+            && widthSimilarity >= 0.90
+            && heightSimilarity >= 0.90
     }
 
     private static func pointAttribute(_ attribute: String, of element: AXUIElement) -> CGPoint? {
@@ -529,6 +836,7 @@ private struct WindowDraft {
     let isOnScreen: Bool?
     let frame: CGRect?
     let windowID: CGWindowID?
+    let spaceIDs: Set<UInt64>?
     let element: AXUIElement?
 }
 

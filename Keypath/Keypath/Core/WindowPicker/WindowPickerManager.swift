@@ -124,19 +124,29 @@ final class WindowPickerManager {
     }
 
     func prepareWindowActivation() -> UUID? {
-        guard isVisible, !isActivatingWindow, !windows.isEmpty else { return nil }
+        guard isVisible,
+              !isActivatingWindow,
+              !windows.isEmpty,
+              let application else { return nil }
         isActivatingWindow = true
+        NSApp.yieldActivation(to: application)
+        PathsWindowManager.shared.hide()
         return pickerSessionID
     }
 
-    func activateSelectedWindow(in pickerSessionID: UUID) async -> Bool {
+    func activateSelectedWindow(
+        in pickerSessionID: UUID
+    ) async -> ApplicationWindowAccessibility.ActivationResult {
         await activateWindow(at: selectedWindowIndex, in: pickerSessionID)
     }
 
-    func activateWindow(keyNumber: Int, in pickerSessionID: UUID) async -> Bool {
+    func activateWindow(
+        keyNumber: Int,
+        in pickerSessionID: UUID
+    ) async -> ApplicationWindowAccessibility.ActivationResult {
         guard self.pickerSessionID == pickerSessionID,
               isVisible,
-              isActivatingWindow else { return false }
+              isActivatingWindow else { return .cancelled }
 
         let index = Self.windowIndex(
             keyNumber: keyNumber,
@@ -146,10 +156,13 @@ final class WindowPickerManager {
         return await activateWindow(at: index, in: pickerSessionID)
     }
 
-    private func activateWindow(at index: Int, in pickerSessionID: UUID) async -> Bool {
+    private func activateWindow(
+        at index: Int,
+        in pickerSessionID: UUID
+    ) async -> ApplicationWindowAccessibility.ActivationResult {
         guard self.pickerSessionID == pickerSessionID,
               isVisible,
-              isActivatingWindow else { return false }
+              isActivatingWindow else { return .cancelled }
         defer {
             if self.pickerSessionID == pickerSessionID {
                 isActivatingWindow = false
@@ -158,33 +171,51 @@ final class WindowPickerManager {
 
         guard windows.indices.contains(index),
               let application else {
-            return false
+            showError("That window is no longer available.")
+            return .windowMissing
         }
 
         selectedWindowIndex = index
 
         let window = windows[index]
         let processIdentifier = application.processIdentifier
-        guard await ApplicationWindowAccessibility.activateAndVerify(window, in: application) else {
-            guard self.pickerSessionID == pickerSessionID,
-                  self.application?.processIdentifier == processIdentifier else { return false }
+        let result = await ApplicationWindowAccessibility.activateAndVerify(window, in: application)
+        guard self.pickerSessionID == pickerSessionID,
+              self.application?.processIdentifier == processIdentifier else { return .cancelled }
+
+        switch result {
+        case .activated:
+            return self.pickerSessionID == pickerSessionID
+                && isVisible
+                && self.application?.processIdentifier == processIdentifier
+                && !application.isTerminated
+                ? .activated
+                : .cancelled
+        case .windowMissing:
             await refreshWindows(in: pickerSessionID)
             guard self.pickerSessionID == pickerSessionID,
                   isVisible,
-                  self.application?.processIdentifier == processIdentifier else { return false }
-            showError("Could not activate that window. The list has been refreshed.")
-            return false
+                  self.application?.processIdentifier == processIdentifier else { return .cancelled }
+            showError("That window closed before it could be opened. The list has been refreshed.")
+        case .applicationActivationDenied:
+            showError("macOS denied switching to \(application.localizedName ?? "this app").")
+        case .applicationDidNotBecomeFrontmost:
+            showError("\(application.localizedName ?? "The app") did not come to the front.")
+        case .focusFailed:
+            showError("macOS did not focus that window. Try selecting it again.")
+        case .cancelled:
+            return .cancelled
         }
-        return self.pickerSessionID == pickerSessionID
-            && isVisible
-            && self.application?.processIdentifier == processIdentifier
-            && !application.isTerminated
+
+        return result
     }
 
     func cancel() {
         if let previousApplication,
            previousApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier,
            !previousApplication.isTerminated {
+            NSApp.yieldActivation(to: previousApplication)
+            PathsWindowManager.shared.hide()
             previousApplication.activate(options: [])
         }
         clearState()
