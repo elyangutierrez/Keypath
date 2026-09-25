@@ -9,138 +9,90 @@ import SwiftUI
 struct WindowPickerView: View {
     @Bindable private var manager: WindowPickerManager
 
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+
     init(manager: WindowPickerManager = .shared) {
         self.manager = manager
     }
 
     var body: some View {
-        ZStack {
-            ConcentricRectangle(corners: .concentric, isUniform: true)
-                .fill(.clear)
-                .glassEffect(.regular, in: .rect(corners: .concentric))
-
-            VStack(alignment: .leading, spacing: 12) {
-                header
-
-                if let errorMessage = manager.errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .accessibilityAddTraits(.updatesFrequently)
+        VStack(spacing: 10) {
+            if manager.visibleWindows.isEmpty {
+                ContentUnavailableView {
+                    Label("No Windows Available", systemImage: "macwindow.on.rectangle")
+                } description: {
+                    Text("The app no longer has accessible windows. Press Escape to close this picker.")
                 }
-
-                if manager.visibleWindows.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Windows Available", systemImage: "macwindow.on.rectangle")
-                    } description: {
-                        Text("The app no longer has accessible windows. Press Escape to close this picker.")
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    windowList
-                }
-
-                Text(Commands.windowPickerHelpText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                windowGrid
             }
-            .padding(18)
+
+            if let errorMessage = manager.errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+
+            footer
         }
-        .frame(width: PathsWindowManager.pathsContentSize.width - 30,
-               height: PathsWindowManager.pathsContentSize.height - 30)
+        .padding(14)
+        .frame(width: manager.panelContentSize.width, height: manager.panelContentSize.height)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.clear)
+                .glassEffect(.clear, in: .rect(cornerRadius: 18))
+        }
         .containerShape(.rect(cornerRadius: 18))
+        .clipShape(.rect(cornerRadius: 18))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Window picker")
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            Image(nsImage: manager.application?.icon ?? NSImage())
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 38, height: 38)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Choose a Window")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-
-                Text(headerSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var windowGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .center, spacing: 10) {
+                ForEach(Array(manager.visibleWindows.enumerated()), id: \.element.id) { index, window in
+                    WindowPickerCardView(
+                        applicationName: manager.application?.localizedName ?? "App",
+                        applicationIcon: manager.application?.icon ?? NSImage(),
+                        keyNumber: index + 1,
+                        windowTitle: window.title,
+                        isMinimized: window.isMinimized,
+                        keybind: manager.keybind,
+                        preview: manager.windowPreviews[window.number]
+                    )
+                }
             }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .scrollIndicators(.never)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Accessible app windows")
+    }
 
-            Spacer(minLength: 0)
+    private var footer: some View {
+        HStack(spacing: 8) {
+            Text(Commands.windowPickerHelpText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            Spacer(minLength: 4)
 
             if manager.pageCount > 1 {
                 Text("Page \(manager.pageIndex + 1) of \(manager.pageCount)")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                    .fixedSize()
             }
         }
-    }
-
-    private var headerSubtitle: String {
-        let appName = manager.application?.localizedName ?? "App"
-        guard let range = manager.visibleWindowRange else {
-            return "\(appName) · No accessible windows"
-        }
-        if manager.pageCount == 1 {
-            return "\(appName) · \(manager.windows.count) windows"
-        }
-        return "\(appName) · Windows \(range.lowerBound)–\(range.upperBound) of \(manager.windows.count)"
-    }
-
-    private var windowList: some View {
-        ScrollView {
-            LazyVStack(spacing: 6) {
-                ForEach(Array(manager.visibleWindows.enumerated()), id: \.element.id) { index, window in
-                    windowRow(window, keyNumber: index + 1)
-                }
-            }
-            .padding(.vertical, 2)
-        }
-        .scrollIndicators(.never)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Accessible app windows")
-    }
-
-    private func windowRow(_ window: AccessibleWindow, keyNumber: Int) -> some View {
-        HStack(spacing: 12) {
-            Text("\(keyNumber)")
-                .font(.system(.body, design: .rounded).weight(.semibold))
-                .frame(width: 30, height: 30)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityHidden(true)
-
-            Text(window.title)
-                .font(.body)
-                .lineLimit(1)
-                .truncationMode(.middle)
-
-            Spacer(minLength: 8)
-
-            if window.isMinimized {
-                Label("Minimized", systemImage: "minus.square")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .labelStyle(.titleAndIcon)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ConcentricRectangle(corners: .concentric(minimum: 12), isUniform: true)
-                .fill(.clear)
-                .glassEffect(.regular, in: .rect(corners: .concentric(minimum: 12)))
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Window \(window.number): \(window.title)")
-        .accessibilityValue(window.isMinimized ? "Minimized" : "Available")
-        .accessibilityHint("Press \(keyNumber) to activate this window.")
     }
 }
 

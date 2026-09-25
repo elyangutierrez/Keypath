@@ -63,6 +63,14 @@ class PathsWindowManager {
         panel.setContentSize(contentSize)
         centerPanel(on: panel.screen ?? screenUnderPointer ?? NSScreen.main)
     }
+
+    func setWindowPickerContentSize(_ contentSize: CGSize) {
+        guard let panel,
+              panel.frame.size != contentSize else { return }
+
+        panel.setContentSize(contentSize)
+        centerPanel(on: panel.screen ?? screenUnderPointer ?? NSScreen.main)
+    }
     
     func show() {
         centerPanel(on: screenUnderPointer ?? NSScreen.main)

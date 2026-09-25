@@ -611,12 +611,14 @@ final class CommandListener {
                 windowPickerManager.begin(
                     for: matchedPath.application,
                     windows: windows,
+                    keybind: matchedPath.keybind,
                     returningTo: returnApplicationAfterKeypath()
                 )
                 commandManager.resetModes()
                 recentAppManager.cancelPicker()
                 assignmentCoordinator.setUndoFocused(false)
                 isListeningForPath = true
+                PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
                 withAnimation(.spring(duration: 0.3)) {
                     PathsWindowManager.shared.show()
                 }
@@ -671,6 +673,7 @@ final class CommandListener {
 
         case let .changeWindowPage(offset):
             windowPickerManager.movePage(by: offset)
+            PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
             return nil
 
         case let .selectWindow(number):

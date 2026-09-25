@@ -64,7 +64,7 @@ struct ShortcutDefinition: Identifiable {
 enum Commands {
     static let activationChordHelpText = "Double-tap left Option, then press the shown key."
     static let contextualShortcutHelpText = "Picker and HUD keys work while those views are open."
-    static let windowPickerHelpText = "For apps with multiple windows, press 1–9 to choose · Tab / Shift-Tab for more · Esc to cancel"
+    static let windowPickerHelpText = "1–9 Select · Tab / Shift-Tab Pages · Esc Cancel"
 
     static let shortcuts: [ShortcutDefinition] = [
         .init(action: .toggleHUD, title: "Toggle Keypath", icon: "macwindow",

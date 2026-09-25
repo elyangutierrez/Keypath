@@ -45,8 +45,8 @@ struct RootView: View {
         Group {
             if navigationManager.route == .paths && windowPickerManager.isVisible {
                 WindowPickerView(manager: windowPickerManager)
-                    .frame(width: PathsWindowManager.pathsContentSize.width,
-                           height: PathsWindowManager.pathsContentSize.height)
+                    .frame(width: windowPickerManager.panelContentSize.width,
+                           height: windowPickerManager.panelContentSize.height)
             } else if navigationManager.route == .paths && recentAppManager.isVisible {
                 RecentAppPickerView(manager: recentAppManager)
                     .frame(width: PathsWindowManager.recentAppsContentSize.width,
@@ -81,6 +81,18 @@ struct RootView: View {
         }
         .onChange(of: recentAppManager.isVisible) { _, isVisible in
             PathsWindowManager.shared.setRecentAppsMode(isVisible)
+        }
+        .onChange(of: windowPickerManager.isVisible) { _, isVisible in
+            if isVisible {
+                PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
+            } else if !recentAppManager.isVisible {
+                PathsWindowManager.shared.setWindowPickerContentSize(PathsWindowManager.pathsContentSize)
+            }
+        }
+        .onChange(of: windowPickerManager.panelContentSize) { _, contentSize in
+            if windowPickerManager.isVisible {
+                PathsWindowManager.shared.setWindowPickerContentSize(contentSize)
+            }
         }
         .onChange(of: navigationManager.route) { _, _ in
             if navigationManager.route == .settings {
