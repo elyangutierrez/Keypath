@@ -30,6 +30,16 @@ final class WindowPickerManager {
         return index < windowCount ? index : nil
     }
 
+    static func selectionIndex(
+        afterMovingBy offset: Int,
+        from index: Int,
+        selectionCount: Int
+    ) -> Int? {
+        guard selectionCount > 0 else { return nil }
+        let wrappedOffset = ((offset % selectionCount) + selectionCount) % selectionCount
+        return (index + wrappedOffset) % selectionCount
+    }
+
     static func pickerHeight(for visibleWindowCount: Int) -> CGFloat {
         let rowCount = max(1, (max(0, visibleWindowCount) + 1) / 2)
         let gridHeight: CGFloat
@@ -52,6 +62,9 @@ final class WindowPickerManager {
     private(set) var keybind: Keybind?
     private(set) var windows: [AccessibleWindow] = []
     private(set) var pageIndex = 0
+    private(set) var selectedWindowIndex = 0
+    private(set) var isActivatingWindow = false
+    private(set) var pickerSessionID = UUID()
     private(set) var errorMessage: String?
     private(set) var windowPreviews: [Int: CGImage] = [:]
 
@@ -88,34 +101,84 @@ final class WindowPickerManager {
         self.windows = windows
         self.keybind = keybind
         self.previousApplication = previousApplication
+        selectedWindowIndex = 0
         isVisible = true
         schedulePreviewCapture()
     }
 
-    func movePage(by offset: Int) {
-        let updatedPageIndex = min(max(pageIndex + offset, 0), pageCount - 1)
-        guard updatedPageIndex != pageIndex else { return }
-        pageIndex = updatedPageIndex
+    func moveSelection(by offset: Int) {
+        guard let updatedIndex = Self.selectionIndex(
+            afterMovingBy: offset,
+            from: selectedWindowIndex,
+            selectionCount: windows.count
+        ) else {
+            return
+        }
+        let oldPageIndex = pageIndex
+        selectedWindowIndex = updatedIndex
+        pageIndex = updatedIndex / Self.windowsPerPage
         errorMessage = nil
-        schedulePreviewCapture()
+        if pageIndex != oldPageIndex {
+            schedulePreviewCapture()
+        }
     }
 
-    func activateWindow(keyNumber: Int) -> Bool {
-        guard let index = Self.windowIndex(
+    func prepareWindowActivation() -> UUID? {
+        guard isVisible, !isActivatingWindow, !windows.isEmpty else { return nil }
+        isActivatingWindow = true
+        return pickerSessionID
+    }
+
+    func activateSelectedWindow(in pickerSessionID: UUID) async -> Bool {
+        await activateWindow(at: selectedWindowIndex, in: pickerSessionID)
+    }
+
+    func activateWindow(keyNumber: Int, in pickerSessionID: UUID) async -> Bool {
+        guard self.pickerSessionID == pickerSessionID,
+              isVisible,
+              isActivatingWindow else { return false }
+
+        let index = Self.windowIndex(
             keyNumber: keyNumber,
             pageIndex: pageIndex,
             windowCount: windows.count
-        ),
+        ) ?? -1
+        return await activateWindow(at: index, in: pickerSessionID)
+    }
+
+    private func activateWindow(at index: Int, in pickerSessionID: UUID) async -> Bool {
+        guard self.pickerSessionID == pickerSessionID,
+              isVisible,
+              isActivatingWindow else { return false }
+        defer {
+            if self.pickerSessionID == pickerSessionID {
+                isActivatingWindow = false
+            }
+        }
+
+        guard windows.indices.contains(index),
               let application else {
             return false
         }
 
-        guard ApplicationWindowAccessibility.activate(windows[index], in: application) else {
-            refreshWindows()
-            showError("That window is no longer available. The list has been refreshed.")
+        selectedWindowIndex = index
+
+        let window = windows[index]
+        let processIdentifier = application.processIdentifier
+        guard await ApplicationWindowAccessibility.activateAndVerify(window, in: application) else {
+            guard self.pickerSessionID == pickerSessionID,
+                  self.application?.processIdentifier == processIdentifier else { return false }
+            await refreshWindows(in: pickerSessionID)
+            guard self.pickerSessionID == pickerSessionID,
+                  isVisible,
+                  self.application?.processIdentifier == processIdentifier else { return false }
+            showError("Could not activate that window. The list has been refreshed.")
             return false
         }
-        return true
+        return self.pickerSessionID == pickerSessionID
+            && isVisible
+            && self.application?.processIdentifier == processIdentifier
+            && !application.isTerminated
     }
 
     func cancel() {
@@ -131,10 +194,21 @@ final class WindowPickerManager {
         clearState()
     }
 
-    private func refreshWindows() {
-        guard let application else { return }
-        windows = ApplicationWindowAccessibility.windows(for: application)
+    private func refreshWindows(in pickerSessionID: UUID) async {
+        guard self.pickerSessionID == pickerSessionID,
+              isVisible,
+              let application else { return }
+        let processIdentifier = application.processIdentifier
+        let refreshedWindows = application.isTerminated
+            ? []
+            : await ApplicationWindowAccessibility.windows(for: application)
+        guard self.pickerSessionID == pickerSessionID,
+              isVisible,
+              self.application?.processIdentifier == processIdentifier else { return }
+        windows = application.isTerminated ? [] : refreshedWindows
         pageIndex = min(pageIndex, pageCount - 1)
+        selectedWindowIndex = min(selectedWindowIndex, max(windows.count - 1, 0))
+        pageIndex = selectedWindowIndex / Self.windowsPerPage
         schedulePreviewCapture()
     }
 
@@ -192,8 +266,11 @@ final class WindowPickerManager {
         keybind = nil
         windows = []
         pageIndex = 0
+        selectedWindowIndex = 0
+        isActivatingWindow = false
         errorMessage = nil
         windowPreviews = [:]
         previousApplication = nil
+        pickerSessionID = UUID()
     }
 }

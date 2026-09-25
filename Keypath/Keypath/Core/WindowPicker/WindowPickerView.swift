@@ -62,7 +62,9 @@ struct WindowPickerView: View {
                         windowTitle: window.title,
                         isMinimized: window.isMinimized,
                         keybind: manager.keybind,
-                        preview: manager.windowPreviews[window.number]
+                        preview: manager.windowPreviews[window.number],
+                        isSelected: manager.selectedWindowIndex
+                            == manager.pageIndex * WindowPickerManager.windowsPerPage + index
                     )
                 }
             }

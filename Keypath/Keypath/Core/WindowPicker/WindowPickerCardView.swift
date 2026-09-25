@@ -16,6 +16,7 @@ struct WindowPickerCardView: View {
     let isMinimized: Bool
     let keybind: Keybind?
     let preview: CGImage?
+    let isSelected: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -55,14 +56,19 @@ struct WindowPickerCardView: View {
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.clear)
-                .glassEffect(.regular, in: .rect(cornerRadius: 16))
+                .glassEffect(
+                    .regular.tint(isSelected ? .blue.opacity(0.6) : .clear),
+                    in: .rect(cornerRadius: 16)
+                )
         }
         .clipShape(.rect(cornerRadius: 16, style: .continuous))
         .containerShape(.rect(cornerRadius: 16, style: .continuous))
+        .animation(.easeOut(duration: 0.12), value: isSelected)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Window \(keyNumber): \(windowTitle)")
-        .accessibilityValue(accessibilityValue)
-        .accessibilityHint("Press \(keyNumber) to activate this window.")
+        .accessibilityValue(isSelected ? "Selected. \(accessibilityValue)" : accessibilityValue)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityHint("Use Tab or Shift-Tab to select this window, then press Return to activate it. Press \(keyNumber) to activate it directly.")
         .help(windowTitle)
     }
 

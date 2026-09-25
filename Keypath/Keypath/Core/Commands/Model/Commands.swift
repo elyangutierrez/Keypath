@@ -22,7 +22,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Equatable {
     case cycleRecentAppsBackward
     case activateRecentApp
     case cancelRecentAppPicker
-    case windowPickerPage
+    case cycleWindowSelection
+    case activateSelectedWindow
     case cancelWindowPicker
     case focusUndo
     case activateUndo
@@ -64,7 +65,7 @@ struct ShortcutDefinition: Identifiable {
 enum Commands {
     static let activationChordHelpText = "Double-tap left Option, then press the shown key."
     static let contextualShortcutHelpText = "Picker and HUD keys work while those views are open."
-    static let windowPickerHelpText = "1–9 Select · Tab / Shift-Tab Pages · Esc Cancel"
+    static let windowPickerHelpText = "Tab Next · ⇧Tab Previous · Return Open · 1–9 Direct · Esc Cancel"
 
     static let shortcuts: [ShortcutDefinition] = [
         .init(action: .toggleHUD, title: "Toggle Keypath", icon: "macwindow",
@@ -95,8 +96,10 @@ enum Commands {
               keyNames: ["return", "enter"], keyLabel: "Return / Enter", scope: .recentAppPicker, usesActivationChord: false),
         .init(action: .cancelRecentAppPicker, title: "Cancel Recent App Picker", icon: "escape",
               keyNames: ["esc"], keyLabel: "Esc", scope: .recentAppPicker, usesActivationChord: false),
-        .init(action: .windowPickerPage, title: "Change Window Page", icon: "rectangle.stack",
+        .init(action: .cycleWindowSelection, title: "Select Window", icon: "rectangle.stack",
               keyNames: ["tab"], keyLabel: "Tab / Shift-Tab", scope: .windowPicker, usesActivationChord: false),
+        .init(action: .activateSelectedWindow, title: "Activate Selected Window", icon: "return",
+              keyNames: ["return", "enter"], keyLabel: "Return / Enter", scope: .windowPicker, usesActivationChord: false),
         .init(action: .cancelWindowPicker, title: "Cancel Window Picker", icon: "escape",
               keyNames: ["esc"], keyLabel: "Esc", scope: .windowPicker, usesActivationChord: false),
         .init(action: .focusUndo, title: "Focus Undo", icon: "arrow.uturn.backward",

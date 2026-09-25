@@ -28,8 +28,7 @@ enum WindowPreviewCaptureService {
         for window in windows {
             guard !Task.isCancelled,
                   !window.isMinimized,
-                  let shareableWindow = uniqueMatch(for: window, in: applicationWindows),
-                  shareableWindow.isOnScreen else {
+                  let shareableWindow = uniqueMatch(for: window, in: applicationWindows) else {
                 continue
             }
 
@@ -59,6 +58,12 @@ enum WindowPreviewCaptureService {
         for accessibleWindow: AccessibleWindow,
         in shareableWindows: [SCWindow]
     ) -> SCWindow? {
+        if let windowID = accessibleWindow.windowID {
+            let idMatches = shareableWindows.filter { $0.windowID == windowID }
+            if idMatches.count == 1 { return idMatches[0] }
+            if !idMatches.isEmpty { return nil }
+        }
+
         guard let accessibilityFrame = accessibleWindow.frame else { return nil }
 
         let candidates = shareableWindows.filter { shareableWindow in

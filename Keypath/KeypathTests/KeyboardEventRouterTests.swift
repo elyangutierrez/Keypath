@@ -178,7 +178,7 @@ struct KeyboardEventRouterTests {
                 == .passThrough)
     }
 
-    @Test func windowPickerRoutesNumbersPagesAndCancelWithoutUsingGlobalCommands() {
+    @Test func windowPickerRoutesTabSelectionNumbersAndCancelWithoutUsingGlobalCommands() {
         let context = KeyboardRouteContext(
             activationChordIsPrimed: true,
             windowPickerIsVisible: true,
@@ -194,12 +194,12 @@ struct KeyboardEventRouterTests {
         #expect(router.decision(
             for: tab,
             context: context
-        ) == .handle(.changeWindowPage(by: 1)))
+        ) == .handle(.moveWindowSelection(by: 1)))
         #expect(router.decision(
             for: tab,
             modifiers: KeyboardModifiers(shift: true),
             context: context
-        ) == .handle(.changeWindowPage(by: -1)))
+        ) == .handle(.moveWindowSelection(by: -1)))
         #expect(router.decision(
             for: Keymaps.keyCodes["esc"]!,
             context: context
