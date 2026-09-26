@@ -19,16 +19,20 @@ struct WindowPickerView: View {
         VStack(spacing: 10) {
             if manager.visibleWindows.isEmpty {
                 ContentUnavailableView {
-                    Label("No Windows Available", systemImage: "macwindow.on.rectangle")
+                    Label(
+                        manager.errorMessage == nil ? "No Windows Available" : "Could Not Restore Window",
+                        systemImage: "macwindow.on.rectangle"
+                    )
                 } description: {
-                    Text("The app no longer has accessible windows. Press Escape to close this picker.")
+                    Text(manager.errorMessage ?? "The app no longer has accessible windows. Press Escape to close this picker.")
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 windowGrid
             }
 
-            if let errorMessage = manager.errorMessage {
+            if let errorMessage = manager.errorMessage,
+               !manager.visibleWindows.isEmpty {
                 Text(errorMessage)
                     .font(.caption)
                     .foregroundStyle(.red)

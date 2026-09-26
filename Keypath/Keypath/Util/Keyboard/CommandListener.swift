@@ -10,6 +10,7 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 import Observation
+import OSLog
 import SwiftUI
 
 /// Core Graphics delivers the event on the main run loop where the tap source is installed.
@@ -337,6 +338,11 @@ enum CommandListenerStatus: Equatable {
 @Observable
 @MainActor
 final class CommandListener {
+    private let windowDiscoveryLogger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "Keypath",
+        category: "WindowDiscovery"
+    )
+
     private(set) var status: CommandListenerStatus = .stopped
     var statusMessage: String { status.message }
     var isListening: Bool { status == .listening }
@@ -767,7 +773,7 @@ final class CommandListener {
         let hudWasVisible = isListeningForPath
 
         windowDiscoveryTask = Task { @MainActor [weak self] in
-            let windows = await ApplicationWindowAccessibility.windows(for: application)
+            let discovery = await ApplicationWindowAccessibility.discoverWindows(for: application)
             guard let self,
                   self.pendingWindowDiscoveryID == discoveryID,
                   !Task.isCancelled else {
@@ -782,10 +788,10 @@ final class CommandListener {
                 return
             }
 
-            if !windows.isEmpty {
+            if !discovery.windows.isEmpty {
                 self.finishWindowDiscovery(discoveryID)
                 self.presentWindows(
-                    windows,
+                    discovery.windows,
                     for: application,
                     keybind: keybind,
                     returningTo: returningApplication
@@ -801,28 +807,54 @@ final class CommandListener {
             PathsWindowManager.shared.hide()
             _ = application.unhide()
             let activationRequested = application.activate(options: [.activateAllWindows])
+            self.windowDiscoveryLogger.debug(
+                "Fallback activation requested=\(activationRequested, privacy: .public)"
+            )
             guard self.pendingWindowDiscoveryID == discoveryID,
                   !Task.isCancelled else {
                 return
             }
             guard activationRequested else {
                 self.finishWindowDiscovery(discoveryID)
-                self.dismissHUDAfterAppSwitch()
+                if discovery.hasWindowEvidence {
+                    self.presentWindowDiscoveryFailure(
+                        for: application,
+                        keybind: keybind,
+                        returningTo: returningApplication,
+                        message: "macOS reported windows for this app but denied activation. Open it from the Dock, then try again."
+                    )
+                } else {
+                    self.dismissHUDAfterAppSwitch()
+                }
                 return
             }
 
             let appBecameActive = await ApplicationWindowAccessibility.waitForApplicationActivation(of: application)
+            self.windowDiscoveryLogger.debug(
+                "Fallback activation status=\(appBecameActive ? "frontmost" : "not-frontmost", privacy: .public)"
+            )
             guard self.pendingWindowDiscoveryID == discoveryID,
                   !Task.isCancelled else {
                 return
             }
             guard appBecameActive, !application.isTerminated else {
                 self.finishWindowDiscovery(discoveryID)
-                self.dismissHUDAfterAppSwitch()
+                if discovery.hasWindowEvidence {
+                    self.presentWindowDiscoveryFailure(
+                        for: application,
+                        keybind: keybind,
+                        returningTo: returningApplication,
+                        message: "macOS reported windows for this app but it did not come to the front. Open it from the Dock, then try again."
+                    )
+                } else {
+                    self.dismissHUDAfterAppSwitch()
+                }
                 return
             }
 
-            let activatedWindows = await ApplicationWindowAccessibility.windows(for: application)
+            let activatedDiscovery = await ApplicationWindowAccessibility.discoverWindowsAfterActivation(
+                for: application
+            )
             guard self.pendingWindowDiscoveryID == discoveryID,
                   !Task.isCancelled,
                   !application.isTerminated else {
@@ -834,17 +866,28 @@ final class CommandListener {
                 return
             }
             self.finishWindowDiscovery(discoveryID)
-            if !activatedWindows.isEmpty {
+            if !activatedDiscovery.windows.isEmpty {
                 self.presentWindows(
-                    activatedWindows,
+                    activatedDiscovery.windows,
                     for: application,
                     keybind: keybind,
-                    returningTo: returningApplication
+                    returningTo: returningApplication,
+                    wasDiscoveredAfterActivation: true
                 )
                 return
             }
 
-            self.dismissHUDAfterAppSwitch()
+            if discovery.hasWindowEvidence || activatedDiscovery.hasWindowEvidence {
+                self.presentWindowDiscoveryFailure(
+                    for: application,
+                    keybind: keybind,
+                    returningTo: returningApplication,
+                    message: "macOS reports windows for this app, but Keypath could not access one to restore. Open a window from the Dock, then try again."
+                )
+            } else {
+                // A genuinely windowless app should still open normally.
+                self.dismissHUDAfterAppSwitch()
+            }
         }
     }
 
@@ -858,7 +901,8 @@ final class CommandListener {
         _ windows: [AccessibleWindow],
         for application: NSRunningApplication,
         keybind: Keybind?,
-        returningTo returningApplication: NSRunningApplication?
+        returningTo returningApplication: NSRunningApplication?,
+        wasDiscoveredAfterActivation: Bool = false
     ) {
         if windows.count > 1 {
             windowPickerManager.begin(
@@ -879,9 +923,19 @@ final class CommandListener {
         }
 
         guard let window = windows.first else { return }
-        if ApplicationWindowAccessibility.minimizeIfActive(window, in: application) {
-            dismissHUDAfterAppSwitch()
-            return
+        if !wasDiscoveredAfterActivation {
+            let didMinimize = ApplicationWindowAccessibility.minimizeIfActive(window, in: application)
+            windowDiscoveryLogger.debug(
+                "Single-window action source=initial-discovery minimize-result=\(didMinimize, privacy: .public)"
+            )
+            if didMinimize {
+                dismissHUDAfterAppSwitch()
+                return
+            }
+        } else {
+            windowDiscoveryLogger.debug(
+                "Single-window action source=post-activation minimize-attempted=false"
+            )
         }
 
         windowPickerManager.begin(
@@ -891,6 +945,29 @@ final class CommandListener {
             returningTo: returningApplication
         )
         activateWindowPickerSelection()
+    }
+
+    private func presentWindowDiscoveryFailure(
+        for application: NSRunningApplication,
+        keybind: Keybind?,
+        returningTo returningApplication: NSRunningApplication?,
+        message: String
+    ) {
+        windowPickerManager.begin(
+            for: application,
+            windows: [],
+            keybind: keybind,
+            returningTo: returningApplication,
+            initialErrorMessage: message
+        )
+        commandManager.resetModes()
+        recentAppManager.cancelPicker()
+        assignmentCoordinator.setUndoFocused(false)
+        isListeningForPath = true
+        PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
+        withAnimation(.spring(duration: 0.3)) {
+            PathsWindowManager.shared.show()
+        }
     }
 
     private func runningApplication(matching destination: SavedKeybindDestination) -> NSRunningApplication? {

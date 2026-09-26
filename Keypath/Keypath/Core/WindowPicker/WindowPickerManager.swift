@@ -94,7 +94,8 @@ final class WindowPickerManager {
         for application: NSRunningApplication,
         windows: [AccessibleWindow],
         keybind: Keybind?,
-        returningTo previousApplication: NSRunningApplication?
+        returningTo previousApplication: NSRunningApplication?,
+        initialErrorMessage: String? = nil
     ) {
         clearState()
         self.application = application
@@ -103,6 +104,7 @@ final class WindowPickerManager {
         self.previousApplication = previousApplication
         selectedWindowIndex = 0
         isVisible = true
+        errorMessage = initialErrorMessage
         schedulePreviewCapture()
     }
 

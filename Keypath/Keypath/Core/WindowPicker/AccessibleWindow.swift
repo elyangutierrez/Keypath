@@ -6,6 +6,7 @@
 import AppKit
 import ApplicationServices
 import CoreGraphics
+import OSLog
 import ScreenCaptureKit
 
 struct AccessibleWindow: Identifiable {
@@ -22,10 +23,48 @@ struct AccessibleWindow: Identifiable {
     var id: Int { number }
 }
 
+struct WindowDiscoveryResult {
+    let windows: [AccessibleWindow]
+    let accessibilityWindowCount: Int
+    let coreGraphicsWindowCount: Int
+    let shareableWindowCount: Int?
+    var evidenceObservedDuringRetries = false
+
+    var hasWindowEvidence: Bool {
+        evidenceObservedDuringRetries
+            || accessibilityWindowCount > 0
+            || coreGraphicsWindowCount > 0
+            || (shareableWindowCount ?? 0) > 0
+    }
+
+    static let empty = WindowDiscoveryResult(
+        windows: [],
+        accessibilityWindowCount: 0,
+        coreGraphicsWindowCount: 0,
+        shareableWindowCount: 0
+    )
+}
+
 @MainActor
 enum ApplicationWindowAccessibility {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "Keypath",
+        category: "WindowDiscovery"
+    )
+
     static func windows(for application: NSRunningApplication) async -> [AccessibleWindow] {
-        guard !Task.isCancelled, !application.isTerminated else { return [] }
+        await discoverWindows(for: application).windows
+    }
+
+    static func discoverWindows(for application: NSRunningApplication) async -> WindowDiscoveryResult {
+        guard !Task.isCancelled, !application.isTerminated else {
+            return WindowDiscoveryResult(
+                windows: [],
+                accessibilityWindowCount: 0,
+                coreGraphicsWindowCount: 0,
+                shareableWindowCount: nil
+            )
+        }
 
         let shareableWindows: [SCWindow]?
         if let shareableContent = try? await SCShareableContent.excludingDesktopWindows(
@@ -41,7 +80,14 @@ enum ApplicationWindowAccessibility {
 
         // The process can exit while ScreenCaptureKit is loading its snapshot.
         // Do not surface a stale list for an application that no longer exists.
-        guard !Task.isCancelled, !application.isTerminated else { return [] }
+        guard !Task.isCancelled, !application.isTerminated else {
+            return WindowDiscoveryResult(
+                windows: [],
+                accessibilityWindowCount: 0,
+                coreGraphicsWindowCount: 0,
+                shareableWindowCount: shareableWindows?.count
+            )
+        }
 
         let pid = application.processIdentifier
         let appElement = AXUIElementCreateApplication(pid)
@@ -61,8 +107,8 @@ enum ApplicationWindowAccessibility {
 
         // AXWindows should contain the app's windows, but some apps omit a
         // miniaturized main window from that array. AXMainWindow is another
-        // supported app-level reference; admit it only when it independently
-        // identifies itself as a minimized standard window.
+        // supported app-level reference; admit it only when its minimized
+        // state and window role identify it as a restorable target.
         var mainWindowValue: CFTypeRef?
         if AXUIElementCopyAttributeValue(
             appElement,
@@ -73,7 +119,7 @@ enum ApplicationWindowAccessibility {
            CFGetTypeID(mainWindowValue) == AXUIElementGetTypeID() {
             let mainWindow = unsafeDowncast(mainWindowValue, to: AXUIElement.self)
             if minimizedState(of: mainWindow) == true,
-               windowKind(of: mainWindow) == .standard {
+               canRestoreMinimizedWindow(mainWindow) {
                 axWindows.append(mainWindow)
             }
         }
@@ -105,6 +151,7 @@ enum ApplicationWindowAccessibility {
             }
         }
 
+        let accessibilityWindowCount = orderedAXWindows.count
         let cgWindows = CoreGraphicsWindowRecord.windows(for: pid)
         var consumedCGIDs = Set<CGWindowID>()
         var mergedWindowIDs = Set<CGWindowID>()
@@ -136,11 +183,35 @@ enum ApplicationWindowAccessibility {
                 excluding: consumedCGIDs
             )
 
-            if kind == .uncertain {
-                // AX role/subrole failures are not evidence of a standard
-                // window. Keep such an entry only when all three APIs agree
-                // on its process/window ID and geometry, and ScreenCaptureKit
-                // supplies a useful title.
+            if kind == .confirmedWindowWithoutSubrole && minimized {
+                // A minimized AXWindow remains a strong window signal even
+                // when Terminal omits AXSubrole and no window-server record
+                // is available for its miniaturized window.
+                if let matchingCGWindow {
+                    consumedCGIDs.insert(matchingCGWindow.windowID)
+                }
+                if let windowID = axWindowID ?? matchingCGWindow?.windowID {
+                    mergedWindowIDs.insert(windowID)
+                }
+                merged.append(WindowDraft(
+                    title: title ?? matchingCGWindow?.title ?? "Window",
+                    captureTitle: title ?? matchingCGWindow?.title,
+                    isMinimized: true,
+                    isOnScreen: matchingCGWindow?.isOnScreen,
+                    frame: frame ?? matchingCGWindow?.frame,
+                    windowID: axWindowID ?? matchingCGWindow?.windowID,
+                    spaceIDs: (axWindowID ?? matchingCGWindow?.windowID).flatMap {
+                        WindowPlatformBridge.managedSpaces(for: $0)
+                    },
+                    element: element
+                ))
+                continue
+            }
+
+            if kind == .uncertain || kind == .confirmedWindowWithoutSubrole {
+                // If AX cannot confirm a standard window subrole, keep the
+                // strict cross-API identity and geometry checks unless the
+                // minimized state independently confirms a target above.
                 guard let axWindowID,
                       let matchingCGWindow,
                       axWindowID == matchingCGWindow.windowID,
@@ -236,9 +307,16 @@ enum ApplicationWindowAccessibility {
             ))
         }
 
-        guard !Task.isCancelled, !application.isTerminated else { return [] }
+        guard !Task.isCancelled, !application.isTerminated else {
+            return WindowDiscoveryResult(
+                windows: [],
+                accessibilityWindowCount: accessibilityWindowCount,
+                coreGraphicsWindowCount: cgWindows.count,
+                shareableWindowCount: shareableWindows?.count
+            )
+        }
 
-        return merged.enumerated().map { index, window in
+        let windows = merged.enumerated().map { index, window in
             AccessibleWindow(
                 number: index + 1,
                 title: window.title.isEmpty ? "Window \(index + 1)" : window.title,
@@ -250,6 +328,73 @@ enum ApplicationWindowAccessibility {
                 element: window.element
             )
         }
+
+        logger.debug(
+            "Window discovery status=complete ax=\(accessibilityWindowCount, privacy: .public) cg=\(cgWindows.count, privacy: .public) sc=\(shareableWindows?.count ?? -1, privacy: .public) included=\(windows.count, privacy: .public) minimized=\(windows.filter(\.isMinimized).count, privacy: .public)"
+        )
+
+        return WindowDiscoveryResult(
+            windows: windows,
+            accessibilityWindowCount: accessibilityWindowCount,
+            coreGraphicsWindowCount: cgWindows.count,
+            shareableWindowCount: shareableWindows?.count
+        )
+    }
+
+    static func discoverWindowsAfterActivation(
+        for application: NSRunningApplication,
+        maximumAttempts: Int = 4,
+        pollingInterval: Duration = .milliseconds(180),
+        sleep: (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
+    ) async -> WindowDiscoveryResult {
+        await retryWindowDiscoveryAfterActivation(
+            maximumAttempts: maximumAttempts,
+            pollingInterval: pollingInterval,
+            discover: { await discoverWindows(for: application) },
+            sleep: sleep
+        )
+    }
+
+    static func retryWindowDiscoveryAfterActivation(
+        maximumAttempts: Int = 4,
+        pollingInterval: Duration = .milliseconds(180),
+        discover: () async -> WindowDiscoveryResult,
+        sleep: (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
+    ) async -> WindowDiscoveryResult {
+        let attempts = max(1, maximumAttempts)
+        var latest = await discover()
+        var observedWindowEvidence = latest.hasWindowEvidence
+        logger.debug(
+            "Post-activation discovery attempt=1 ax=\(latest.accessibilityWindowCount, privacy: .public) cg=\(latest.coreGraphicsWindowCount, privacy: .public) sc=\(latest.shareableWindowCount ?? -1, privacy: .public) included=\(latest.windows.count, privacy: .public)"
+        )
+
+        guard latest.windows.isEmpty else {
+            latest.evidenceObservedDuringRetries = observedWindowEvidence
+            return latest
+        }
+        for attempt in 2..<(attempts + 1) {
+            guard !Task.isCancelled else { return latest }
+            do {
+                try await sleep(pollingInterval)
+            } catch {
+                return latest
+            }
+            latest = await discover()
+            observedWindowEvidence = observedWindowEvidence || latest.hasWindowEvidence
+            logger.debug(
+                "Post-activation discovery attempt=\(attempt, privacy: .public) ax=\(latest.accessibilityWindowCount, privacy: .public) cg=\(latest.coreGraphicsWindowCount, privacy: .public) sc=\(latest.shareableWindowCount ?? -1, privacy: .public) included=\(latest.windows.count, privacy: .public)"
+            )
+            if !latest.windows.isEmpty {
+                latest.evidenceObservedDuringRetries = observedWindowEvidence
+                return latest
+            }
+        }
+        latest.evidenceObservedDuringRetries = observedWindowEvidence
+        return latest
     }
 
     private static func confirmedShareableWindow(
@@ -349,23 +494,35 @@ enum ApplicationWindowAccessibility {
             break
         }
 
-        // Clear the minimized flag before activation, but do not wait for
-        // AX to reflect the change yet. Some apps process deminiaturization
-        // only after receiving their activation request.
-        var restoreRequest = requestRestoreIfMinimized(window)
+        // Request restoration before activation when possible. Some apps
+        // accept this request without restoring the window until they become
+        // active, so check the live state and retry after activation below.
+        let initialRestoreRequest = requestRestoreIfMinimized(window)
 
         let activationResult = await activateApplicationAndWait(application)
         guard activationResult == .activated else {
             return activationResult
         }
 
-        // If the first AX request was rejected while the app was inactive,
-        // retry after activation. Poll only now, when the target app can
-        // finish deminiaturizing its selected window.
-        if restoreRequest == .failed {
-            restoreRequest = requestRestoreIfMinimized(window)
-        }
-        guard await waitForRestoration(restoreRequest, of: window) else {
+        // Always re-read AXMinimized after activation. A setter may report
+        // success before the app is active while leaving the window minimized.
+        // Retry then wait for the state change before raising or focusing it.
+        guard await restoreIfMinimizedAndWait(
+            previouslyAcceptedRestoreRequest: initialRestoreRequest == .requested,
+            cachedMinimized: window.isMinimized,
+            minimizedState: {
+                guard let element = window.element else { return nil }
+                return minimizedState(of: element)
+            },
+            requestRestore: {
+                guard let element = window.element else { return false }
+                return AXUIElementSetAttributeValue(
+                    element,
+                    kAXMinimizedAttribute as CFString,
+                    kCFBooleanFalse
+                ) == .success
+            }
+        ) else {
             return Task.isCancelled ? .cancelled : .focusFailed
         }
         guard !Task.isCancelled else { return .cancelled }
@@ -444,41 +601,66 @@ enum ApplicationWindowAccessibility {
     }
 
     private static func requestRestoreIfMinimized(_ window: AccessibleWindow) -> RestoreRequest {
-        guard let element = window.element else {
-            return window.isMinimized ? .failed : .notNeeded
-        }
+        requestRestoreIfMinimized(
+            cachedMinimized: window.isMinimized,
+            minimizedState: {
+                guard let element = window.element else { return nil }
+                return minimizedState(of: element)
+            },
+            requestRestore: {
+                guard let element = window.element else { return false }
+                return AXUIElementSetAttributeValue(
+                    element,
+                    kAXMinimizedAttribute as CFString,
+                    kCFBooleanFalse
+                ) == .success
+            }
+        )
+    }
 
-        let currentState = minimizedState(of: element)
-        guard currentState == true || (currentState == nil && window.isMinimized) else {
+    private static func requestRestoreIfMinimized(
+        cachedMinimized: Bool,
+        minimizedState: () -> Bool?,
+        requestRestore: () -> Bool
+    ) -> RestoreRequest {
+        let currentState = minimizedState()
+        guard currentState == true || (currentState == nil && cachedMinimized) else {
             return .notNeeded
         }
 
-        return AXUIElementSetAttributeValue(
-            element,
-            kAXMinimizedAttribute as CFString,
-            kCFBooleanFalse
-        ) == .success ? .requested : .failed
+        return requestRestore() ? .requested : .failed
     }
 
-    private static func waitForRestoration(
-        _ request: RestoreRequest,
-        of window: AccessibleWindow
+    static func restoreIfMinimizedAndWait(
+        previouslyAcceptedRestoreRequest: Bool,
+        cachedMinimized: Bool,
+        minimizedState: () -> Bool?,
+        requestRestore: () -> Bool,
+        timeout: Duration = .seconds(2),
+        pollingInterval: Duration = .milliseconds(60),
+        sleep: (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
     ) async -> Bool {
-        guard request != .failed else { return false }
-        guard request == .requested else { return true }
-        guard let element = window.element else { return !window.isMinimized }
+        let request = requestRestoreIfMinimized(
+            cachedMinimized: cachedMinimized,
+            minimizedState: minimizedState,
+            requestRestore: requestRestore
+        )
+        guard request != .notNeeded else { return true }
+        guard request != .failed || previouslyAcceptedRestoreRequest else { return false }
 
-        let deadline = ContinuousClock.now + .seconds(2)
+        let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
             guard !Task.isCancelled else { return false }
-            if minimizedState(of: element) == false { return true }
+            if minimizedState() == false { return true }
             do {
-                try await Task.sleep(for: .milliseconds(60))
+                try await sleep(pollingInterval)
             } catch {
                 return false
             }
         }
-        return minimizedState(of: element) == false
+        return minimizedState() == false
     }
 
     private static func activateApplicationAndWait(
@@ -578,7 +760,7 @@ enum ApplicationWindowAccessibility {
     private static func isLiveMinimizedAXWindow(_ window: AccessibleWindow) -> Bool {
         guard let element = window.element,
               minimizedState(of: element) == true,
-              windowKind(of: element) == .standard else {
+              canRestoreMinimizedWindow(element) else {
             return false
         }
 
@@ -667,6 +849,7 @@ enum ApplicationWindowAccessibility {
 
     private enum WindowKind: Equatable {
         case standard
+        case confirmedWindowWithoutSubrole
         case uncertain
         case notAWindow
     }
@@ -693,12 +876,28 @@ enum ApplicationWindowAccessibility {
             kAXSubroleAttribute as CFString,
             &subroleValue
         )
-        guard subroleResult == .success,
-              let subrole = subroleValue as? String else {
-            return .uncertain
+        let subrole = subroleResult == .success ? subroleValue as? String : nil
+        guard canRestoreMinimizedWindow(role: role, subrole: subrole) else {
+            return .notAWindow
         }
+        if subrole == nil {
+            return .confirmedWindowWithoutSubrole
+        }
+        return .standard
+    }
 
-        return subrole == (kAXStandardWindowSubrole as String) ? .standard : .notAWindow
+    static func canRestoreMinimizedWindow(role: String?, subrole: String?) -> Bool {
+        guard role == (kAXWindowRole as String) else { return false }
+        return subrole == nil || subrole == (kAXStandardWindowSubrole as String)
+    }
+
+    private static func canRestoreMinimizedWindow(_ element: AXUIElement) -> Bool {
+        switch windowKind(of: element) {
+        case .standard, .confirmedWindowWithoutSubrole:
+            return true
+        case .uncertain, .notAWindow:
+            return false
+        }
     }
 
     private static func titleAttribute(of element: AXUIElement) -> String? {
