@@ -15,6 +15,7 @@ struct RootView: View {
     @State private var commandManager = KeypathCommandManager.shared
     @State private var navigationManager = NavigationManager.shared
     @State private var recentAppManager = RecentAppManager.shared
+    @State private var windowPickerManager = WindowPickerManager.shared
     
     var paths: [Keypath] {
         
@@ -42,7 +43,11 @@ struct RootView: View {
     
     var body: some View {
         Group {
-            if navigationManager.route == .paths && recentAppManager.isVisible {
+            if navigationManager.route == .paths && windowPickerManager.isVisible {
+                WindowPickerView(manager: windowPickerManager)
+                    .frame(width: windowPickerManager.panelContentSize.width,
+                           height: windowPickerManager.panelContentSize.height)
+            } else if navigationManager.route == .paths && recentAppManager.isVisible {
                 RecentAppPickerView(manager: recentAppManager)
                     .frame(width: PathsWindowManager.recentAppsContentSize.width,
                            height: PathsWindowManager.recentAppsContentSize.height)
@@ -77,9 +82,22 @@ struct RootView: View {
         .onChange(of: recentAppManager.isVisible) { _, isVisible in
             PathsWindowManager.shared.setRecentAppsMode(isVisible)
         }
+        .onChange(of: windowPickerManager.isVisible) { _, isVisible in
+            if isVisible {
+                PathsWindowManager.shared.setWindowPickerContentSize(windowPickerManager.panelContentSize)
+            } else if !recentAppManager.isVisible {
+                PathsWindowManager.shared.setWindowPickerContentSize(PathsWindowManager.pathsContentSize)
+            }
+        }
+        .onChange(of: windowPickerManager.panelContentSize) { _, contentSize in
+            if windowPickerManager.isVisible {
+                PathsWindowManager.shared.setWindowPickerContentSize(contentSize)
+            }
+        }
         .onChange(of: navigationManager.route) { _, _ in
             if navigationManager.route == .settings {
                 recentAppManager.cancelPicker()
+                windowPickerManager.finish()
             }
             commandManager.setPaths(paths)
         }
