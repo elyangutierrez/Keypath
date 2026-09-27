@@ -143,6 +143,23 @@ struct KeyboardEventRouterTests {
         ) == .handle(.moveSelection(by: 2)))
     }
 
+    @Test func verticalSelectionUsesTheConfiguredColumnCount() {
+        for columns in 2...4 {
+            let context = KeyboardRouteContext(
+                selectionModeIsActive: true,
+                gridColumnCount: columns
+            )
+            #expect(router.decision(
+                for: Keymaps.keyCodes["uparrow"]!,
+                context: context
+            ) == .handle(.moveSelection(by: -columns)))
+            #expect(router.decision(
+                for: Keymaps.keyCodes["downarrow"]!,
+                context: context
+            ) == .handle(.moveSelection(by: columns)))
+        }
+    }
+
     @Test func recentPickerRoutesForwardReverseActivateAndCancelControls() {
         let context = KeyboardRouteContext(recentAppPickerIsVisible: true)
         let tab = Keymaps.keyCodes["tab"]!
@@ -159,6 +176,53 @@ struct KeyboardEventRouterTests {
                 == .handle(.cancelRecentAppPicker))
         #expect(router.decision(for: Keymaps.keyCodes["q"]!, modifiers: KeyboardModifiers(), context: context)
                 == .passThrough)
+    }
+
+    @Test func windowPickerRoutesTabSelectionNumbersAndCancelWithoutUsingGlobalCommands() {
+        let context = KeyboardRouteContext(
+            activationChordIsPrimed: true,
+            windowPickerIsVisible: true,
+            windowPickerWindowCount: 3,
+            selectionModeIsActive: true
+        )
+        let tab = Keymaps.keyCodes["tab"]!
+
+        #expect(router.decision(
+            for: Keymaps.keyCodes["2"]!,
+            context: context
+        ) == .handle(.selectWindow(number: 2)))
+        #expect(router.decision(
+            for: tab,
+            context: context
+        ) == .handle(.moveWindowSelection(by: 1)))
+        #expect(router.decision(
+            for: tab,
+            modifiers: KeyboardModifiers(shift: true),
+            context: context
+        ) == .handle(.moveWindowSelection(by: -1)))
+        #expect(router.decision(
+            for: Keymaps.keyCodes["esc"]!,
+            context: context
+        ) == .handle(.cancelWindowPicker))
+
+        // Option+S remains the selection-mode command everywhere outside the
+        // window picker; inside the picker it is unrelated input and passes through.
+        #expect(router.decision(
+            for: Keymaps.keyCodes["s"]!,
+            context: context
+        ) == .passThrough)
+        #expect(router.decision(
+            for: Keymaps.keyCodes["s"]!,
+            context: KeyboardRouteContext(activationChordIsPrimed: true)
+        ) == .handle(.toggleSelectionMode))
+        #expect(router.decision(
+            for: Keymaps.keyCodes["q"]!,
+            context: context
+        ) == .passThrough)
+        #expect(router.decision(
+            for: Keymaps.keyCodes["9"]!,
+            context: context
+        ) == .passThrough)
     }
 
     @Test func modifiedShortcutsPassThrough() {

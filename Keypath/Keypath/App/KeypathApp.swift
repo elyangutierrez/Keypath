@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import CoreGraphics
 import SwiftUI
 
 @main
@@ -29,6 +30,11 @@ struct KeypathApp: App {
                         NSWorkspace.shared.open(settingsURL)
                     }
                 }
+            }
+
+            if !CGPreflightScreenCaptureAccess() {
+                Button("Request Screen Recording Access", action: requestScreenRecordingAccess)
+                Button("Open Screen Recording Settings", action: openScreenRecordingSettings)
             }
 
             Divider()
@@ -67,5 +73,14 @@ struct KeypathApp: App {
             Image(nsImage: image)
         }
         .menuBarExtraStyle(.menu)
+    }
+
+    private func requestScreenRecordingAccess() {
+        _ = CGRequestScreenCaptureAccess()
+    }
+
+    private func openScreenRecordingSettings() {
+        guard let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
+        NSWorkspace.shared.open(settingsURL)
     }
 }

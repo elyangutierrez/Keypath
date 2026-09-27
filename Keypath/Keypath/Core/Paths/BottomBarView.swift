@@ -12,6 +12,7 @@ struct BottomBarView: View {
     @Environment(\.colorScheme) var colorScheme
     
     @State private var navigationManager = NavigationManager.shared
+    @State private var gridLayoutManager = GridLayoutManager.shared
     
     var body: some View {
         HStack {
@@ -30,6 +31,34 @@ struct BottomBarView: View {
                     )
             }
             .buttonStyle(.plain)
+
+            Menu {
+                ForEach(2...4, id: \.self) { count in
+                    Button {
+                        gridLayoutManager.setColumnCount(count)
+                    } label: {
+                        if gridLayoutManager.columnCount == count {
+                            Label("\(count) Columns", systemImage: "checkmark")
+                        } else {
+                            Text("\(count) Columns")
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "square.grid.3x3")
+                    .fontWeight(.medium)
+                    .frame(width: 25, height: 25)
+                    .background(
+                        ConcentricRectangle(corners: .concentric(minimum: 5.0), isUniform: true)
+                            .fill(.quaternary)
+                            .frame(width: 23, height: 23)
+                    )
+            }
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .labelStyle(.iconOnly)
+            .accessibilityLabel("Grid columns")
+            .accessibilityValue("\(gridLayoutManager.columnCount) columns")
             
             Spacer()
             

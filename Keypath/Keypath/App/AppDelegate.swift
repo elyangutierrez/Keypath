@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import CoreServices
 import Foundation
 import ApplicationServices // Required for AX functions
 import SwiftUI
@@ -15,6 +16,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let commandListener = CommandListener()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        // Xcode's DerivedData app may not be indexed by Launch Services. TCC needs
+        // the Debug bundle ID to resolve to this app for Screen Recording consent.
+        let registrationStatus = LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+        if registrationStatus != noErr {
+            print("Failed to register Keypath Debug with Launch Services: \(registrationStatus)")
+        }
+        #endif
+
         // Ensure auto-launch status matches user preference
         Config.shared.syncAutoLaunch(isEnabled: Config.shared.getAutoLaunch())
         

@@ -98,6 +98,19 @@ struct KeypathCommandManagerTests {
         manager.shiftSelection(by: -4)
         #expect(manager.currentIndex == 0)
     }
+
+    @Test func test_gridSelectionStopsAtTheEndOfAnIncompleteRow() {
+        let manager = KeypathCommandManager()
+        guard let application = NSWorkspace.shared.runningApplications.first else { return }
+        manager.setPaths((0..<6).map { _ in Keypath(application: application) })
+
+        manager.shiftSelection(by: 4)
+        #expect(manager.currentIndex == 4)
+        manager.shiftSelection(by: 4)
+        #expect(manager.currentIndex == 5)
+        manager.shiftSelection(by: 4)
+        #expect(manager.currentIndex == 5)
+    }
     
     @Test func test_resetIndex() async {
         let manager = KeypathCommandManager()

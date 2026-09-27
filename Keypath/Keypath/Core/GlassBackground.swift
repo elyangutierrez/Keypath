@@ -11,7 +11,7 @@ struct GlassBackground: View {
     var body: some View {
         Rectangle()
             .fill(.clear)
-            .glassEffect(.clear, in: .rect(cornerRadius: 0))
+            .glassEffect(.regular, in: .rect(cornerRadius: 0))
             .ignoresSafeArea()
     }
 }

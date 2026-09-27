@@ -29,6 +29,11 @@ struct CommandsView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                    Text(Commands.windowPickerHelpText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     VStack(spacing: 5.0) {
                         ForEach(Commands.shortcuts) { shortcut in
                             HStack(alignment: .top, spacing: 6.0) {

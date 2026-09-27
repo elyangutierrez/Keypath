@@ -12,15 +12,18 @@ class Config {
     
     static let shared = Config()
     
-    let defaults = UserDefaults.standard
+    let defaults: UserDefaults
     let key = "CONFIGDICT"
     
     var configDictionary: [String: Any] = [
         "IS_AUTO_LAUNCH_ENABLED": false,
-        "EXCLUDED_APPS": ["Finder", "Preview"]
+        "EXCLUDED_APPS": ["Finder", "Preview"],
+        "GRID_COLUMN_COUNT": 2
     ]
     
-    init() {}
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
     
     func userDictionary() -> [String: Any] {
         return defaults.dictionary(forKey: key) ?? configDictionary
@@ -45,6 +48,19 @@ class Config {
     
     func getExcludedApps() -> [String] {
         return (userDictionary()["EXCLUDED_APPS"] as? [String]) ?? ["Finder", "Preview"]
+    }
+
+    func getGridColumnCount() -> Int {
+        guard let count = userDictionary()["GRID_COLUMN_COUNT"] as? Int,
+              (2...4).contains(count) else { return 2 }
+        return count
+    }
+
+    func setGridColumnCount(_ count: Int) {
+        guard (2...4).contains(count) else { return }
+        var configDict = userDictionary()
+        configDict["GRID_COLUMN_COUNT"] = count
+        defaults.set(configDict, forKey: key)
     }
     
     func addExcludedApp(_ appName: String) {
@@ -90,4 +106,3 @@ class Config {
 extension Notification.Name {
     static let excludedAppsDidChange = Notification.Name("ExcludedAppsDidChange")
 }
-
